@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <pattern id="pattern" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+      <!-- Diamond motif -->
+      <path d="M50 0 L100 50 L50 100 L0 50 Z" fill="none" stroke="#D4A853" stroke-width="0.5" opacity="0.15"/>
+      <!-- Triangle motif -->
+      <path d="M50 20 L80 80 L20 80 Z" fill="none" stroke="#D4A853" stroke-width="0.3" opacity="0.1"/>
+      <!-- Chevron lines -->
+      <path d="M10 10 L30 30 M70 10 L90 30 M10 70 L30 90 M70 70 L90 90" stroke="#D4A853" stroke-width="0.3" opacity="0.1"/>
+      <!-- Cross marker -->
+      <path d="M48 35 L52 35 M50 33 L50 37" stroke="#D4A853" stroke-width="0.4" opacity="0.12"/>
+      <!-- Dotted line -->
+      <circle cx="25" cy="50" r="1" fill="#D4A853" opacity="0.1"/>
+      <circle cx="75" cy="50" r="1" fill="#D4A853" opacity="0.1"/>
+    </pattern>
+  </defs>
+  <rect width="200" height="200" fill="url(#pattern)"/>
+</svg>

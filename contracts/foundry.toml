@@ -1,0 +1,11 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+evm_version = "shanghai"
+
+[rpc_endpoints]
+ritual = "https://rpc.ritualfoundation.org"
+
+[etherscan]
+ritual = { key = "${ETHERSCAN_KEY}" }
