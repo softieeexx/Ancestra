@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+
 import { ConnectKitButton } from "connectkit";
 import { useRouter } from "next/navigation";
 
@@ -27,27 +27,6 @@ function DiamondIcon() {
   );
 }
 
-function DocsButton() {
-  return (
-    <Link
-      href="/admin"
-      className="flex items-center gap-2 px-5 py-2 rounded-full font-rajdhani font-semibold text-xs transition-colors hover:bg-white/5"
-      style={{
-        border: "1px solid rgba(201,168,76,0.45)",
-        color: "#c9a84c",
-        letterSpacing: "0.15em",
-      }}
-    >
-      <svg width="13" height="13" viewBox="0 0 12 12" fill="none" aria-hidden>
-        <rect x="0.6" y="0.6" width="4.2" height="4.2" rx="0.5" stroke="currentColor" strokeWidth="1" />
-        <rect x="7.2" y="0.6" width="4.2" height="4.2" rx="0.5" stroke="currentColor" strokeWidth="1" />
-        <rect x="0.6" y="7.2" width="4.2" height="4.2" rx="0.5" stroke="currentColor" strokeWidth="1" />
-        <rect x="7.2" y="7.2" width="4.2" height="4.2" rx="0.5" stroke="currentColor" strokeWidth="1" />
-      </svg>
-      DOCS
-    </Link>
-  );
-}
 
 function ConnectWalletButton() {
   const router = useRouter();
@@ -139,7 +118,7 @@ export default function HomePage() {
               ANCESTRA
             </span>
           </div>
-          <DocsButton />
+
         </nav>
 
         {/* ── Hero content ──────────────────────────── */}
