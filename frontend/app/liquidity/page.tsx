@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { useAccount, useReadContract, useWriteContract, useSwitchChain } from "wagmi";
 import { formatUnits, parseUnits, Address } from "viem";
 import AppNav from "@/components/AppNav";
 import WalletConnect from "@/components/WalletConnect";
 import TokenSelector from "@/components/dex/TokenSelector";
 import TxStatus from "@/components/dex/TxStatus";
-import { TOKENS, Token, CONTRACTS, POOLS } from "@/lib/constants";
+import { TOKENS, Token, CONTRACTS, POOLS, RITUAL_CHAIN_ID } from "@/lib/constants";
 import { FACTORY_ABI, PAIR_ABI, ERC20_ABI, ROUTER_ABI, MOCK_ERC20_ABI } from "@/lib/abi";
 import { useAddLiquidity, useRemoveLiquidity } from "@/hooks/useRouter";
 
@@ -270,6 +270,8 @@ const FAUCET_TOKENS = [
 ] as const;
 
 function FaucetPanel({ address }: { address: Address }) {
+  const { chainId } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
   const [minting, setMinting] = useState<string | null>(null);
   const [minted, setMinted]   = useState<string | null>(null);
@@ -280,6 +282,9 @@ function FaucetPanel({ address }: { address: Address }) {
     setMinted(null);
     setMintError(null);
     try {
+      if (chainId !== RITUAL_CHAIN_ID) {
+        await switchChainAsync({ chainId: RITUAL_CHAIN_ID });
+      }
       await writeContractAsync({
         address: token.address,
         abi: MOCK_ERC20_ABI,
@@ -293,7 +298,7 @@ function FaucetPanel({ address }: { address: Address }) {
     } finally {
       setMinting(null);
     }
-  }, [address, writeContractAsync]);
+  }, [address, chainId, switchChainAsync, writeContractAsync]);
 
   return (
     <div

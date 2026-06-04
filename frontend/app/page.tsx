@@ -66,6 +66,16 @@ export default function HomePage() {
   return (
     <div className="hero-grain relative w-full h-screen overflow-hidden" style={{ background: "#0a0a0a" }}>
 
+      {/* 0 ─ Background image */}
+      <Image
+        src="/landing-bg.jpeg"
+        alt=""
+        fill
+        priority
+        className="object-cover object-center"
+        style={{ zIndex: 0 }}
+      />
+
       {/* 1 ─ Teal crystal-tower glow (center-right) */}
       <div
         className="absolute inset-0 pointer-events-none"

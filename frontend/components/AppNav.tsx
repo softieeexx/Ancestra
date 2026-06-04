@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ConnectKitButton } from "connectkit";
+import { useAccount, useSwitchChain } from "wagmi";
+import { RITUAL_CHAIN_ID } from "@/lib/constants";
 
 const TABS = [
   { label: "Swap",      href: "/swap" },
@@ -14,6 +16,9 @@ const TABS = [
 
 export default function AppNav() {
   const pathname = usePathname();
+  const { isConnected, chainId } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
+  const wrongNetwork = isConnected && chainId !== RITUAL_CHAIN_ID;
 
   // Mark "Swap" as active for any /swap/* route
   const isActive = (href: string) =>
@@ -22,6 +27,26 @@ export default function AppNav() {
       : pathname === href;
 
   return (
+    <>
+    {wrongNetwork && (
+      <div
+        className="flex items-center justify-center gap-3 px-4 py-2 text-xs font-semibold font-rajdhani tracking-wider"
+        style={{ background: "rgba(248,113,113,0.12)", borderBottom: "1px solid rgba(248,113,113,0.25)", color: "#F87171" }}
+      >
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
+          <path d="M8 2L14 13H2L8 2Z" stroke="#F87171" strokeWidth="1.4" strokeLinejoin="round"/>
+          <path d="M8 6v3M8 11v0.5" stroke="#F87171" strokeWidth="1.4" strokeLinecap="round"/>
+        </svg>
+        <span>WRONG NETWORK — YOU&apos;RE NOT ON RITUAL TESTNET</span>
+        <button
+          onClick={() => switchChainAsync({ chainId: RITUAL_CHAIN_ID })}
+          className="px-3 py-1 rounded-lg transition-all hover:opacity-80"
+          style={{ background: "rgba(248,113,113,0.2)", border: "1px solid rgba(248,113,113,0.4)", color: "#F87171", letterSpacing: "0.1em" }}
+        >
+          SWITCH NOW
+        </button>
+      </div>
+    )}
     <nav
       className="flex items-center justify-between px-5 md:px-8 py-4 flex-shrink-0"
       style={{ borderBottom: "1px solid rgba(201,168,76,0.10)" }}
@@ -90,5 +115,6 @@ export default function AppNav() {
         )}
       </ConnectKitButton.Custom>
     </nav>
+    </>
   );
 }
