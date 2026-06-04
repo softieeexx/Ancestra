@@ -155,9 +155,7 @@ export default function HomePage() {
             className="text-base leading-relaxed mb-10"
             style={{ color: "rgba(245,230,200,0.65)", maxWidth: "380px" }}
           >
-            Trade RITUAL against the world
-            <br />
-            through ancestral liquidity.
+            Trade RITUAL against the world through ancestral liquidity.
           </p>
 
           {/* CTA */}
