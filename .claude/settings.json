@@ -1,4 +1,18 @@
 {
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /home/mceesquare/ritual-projects/ancestra && git diff --quiet HEAD && git diff --cached --quiet || (git add -A && git commit -m \"Auto-deploy: $(date '+%Y-%m-%d %H:%M')\" && git push origin master && LATEST=$(vercel ls frontend 2>/dev/null | awk '/Ready.*Production/{print $3; exit}') && [ -n \"$LATEST\" ] && vercel alias set \"$LATEST\" ancestra-amm.vercel.app && vercel alias set \"$LATEST\" ancestra-dex.vercel.app) 2>&1 | tail -5",
+            "timeout": 120,
+            "statusMessage": "Pushing and deploying…"
+          }
+        ]
+      }
+    ]
+  },
   "skills": {
     "ritual": ".claude/skills/ritual-dapp-skills/skills/ritual/SKILL.md",
     "ritual-dapp-overview": ".claude/skills/ritual-dapp-skills/skills/ritual-dapp-overview/SKILL.md",
