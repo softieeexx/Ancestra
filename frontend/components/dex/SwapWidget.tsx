@@ -23,7 +23,7 @@ export default function SwapWidget() {
   const [arrowSpin, setArrowSpin] = useState(false);
   const [estimating, setEstimating] = useState(false);
 
-  const { txState, txHash, error, amountsOut, swap, reset } = useSwap();
+  const { txState, txHash, error, swap, reset } = useSwap();
 
   // Native RITUAL balance
   const { data: nativeBalance } = useBalance({ address, chainId: ritualChain.id });

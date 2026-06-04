@@ -1,42 +1,14 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useAccount, useWriteContract, useReadContract, useSwitchChain, usePublicClient } from "wagmi";
-import { parseUnits, formatUnits, Address, maxUint256 } from "viem";
-import { ROUTER_ABI, ERC20_ABI, PAIR_ABI } from "@/lib/abi";
-import { CONTRACTS, RITUAL_CHAIN_ID, TOKENS, Token, deadlineMs } from "@/lib/constants";
+import { useAccount, useWriteContract, useSwitchChain } from "wagmi";
+import { parseUnits, Address, maxUint256 } from "viem";
+import { ROUTER_ABI, ERC20_ABI } from "@/lib/abi";
+import { CONTRACTS, RITUAL_CHAIN_ID, Token, deadlineMs } from "@/lib/constants";
 
 export type TxState = "idle" | "approving" | "swapping" | "adding" | "removing" | "success" | "error";
 
-export function useTokenApproval(token: Token | null, spender: Address, amount: bigint) {
-  const { address } = useAccount();
-  const { writeContractAsync } = useWriteContract();
-
-  const { data: allowance, refetch: refetchAllowance } = useReadContract({
-    address: token?.address,
-    abi: ERC20_ABI,
-    functionName: "allowance",
-    args: address && token ? [address, spender] : undefined,
-    query: { enabled: !!address && !!token && !token.isNative },
-  });
-
-  const needsApproval = !!(token && !token.isNative && allowance !== undefined && allowance < amount);
-
-  const approve = useCallback(async () => {
-    if (!token || token.isNative) return;
-    await writeContractAsync({
-      address: token.address,
-      abi: ERC20_ABI,
-      functionName: "approve",
-      args: [spender, maxUint256],
-      gas: 100000n,
-    });
-    await refetchAllowance();
-  }, [token, spender, writeContractAsync, refetchAllowance]);
-
-  return { needsApproval, approve };
-}
-
+// ── Swap hook ────────────────────────────────────────────────────────────────
 export function useSwap() {
   const { address, chainId } = useAccount();
   const { switchChainAsync } = useSwitchChain();
@@ -45,7 +17,6 @@ export function useSwap() {
   const [txState, setTxState] = useState<TxState>("idle");
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [amountsOut, setAmountsOut] = useState<bigint[]>([]);
 
   const swap = useCallback(async (
     tokenIn: Token,
@@ -67,96 +38,54 @@ export function useSwap() {
       const parsedIn = parseUnits(amountIn, tokenIn.decimals);
       if (parsedIn === 0n) return;
 
-      const path = buildPath(tokenIn, tokenOut);
+      const inAddr  = tokenIn.isNative  ? CONTRACTS.WRITUAL : tokenIn.address;
+      const outAddr = tokenOut.isNative ? CONTRACTS.WRITUAL : tokenOut.address;
+      const path: Address[] = [inAddr, outAddr];
       const deadline = deadlineMs();
 
-      // Get expected output
-      const routerAmountsOut = await getAmountsOut(parsedIn, path);
-      const expectedOut = routerAmountsOut[routerAmountsOut.length - 1];
+      // Get expected output from on-chain router
+      const amountsOut = await getAmountsOut(parsedIn, path);
+      const expectedOut = amountsOut.length > 1 ? amountsOut[amountsOut.length - 1] : 0n;
       const minOut = expectedOut * BigInt(10000 - slippageBps) / 10000n;
-      setAmountsOut(routerAmountsOut);
 
-      // Approve if needed (for non-native tokens)
-      if (!tokenIn.isNative) {
+      if (tokenIn.isNative) {
+        // Native RITUAL → token: use swapExactRITUALForTokens (payable, handles wrap internally)
+        setTxState("swapping");
+        const hash = await writeContractAsync({
+          address: CONTRACTS.ROUTER,
+          abi: ROUTER_ABI,
+          functionName: "swapExactRITUALForTokens",
+          args: [minOut, path, address, deadline],
+          value: parsedIn,
+          gas: 300000n,
+        });
+        setTxHash(hash);
+      } else {
+        // ERC20 → token: approve then swap
+        setTxState("approving");
         const allowance = await checkAllowance(tokenIn.address, address, CONTRACTS.ROUTER);
         if (allowance < parsedIn) {
-          setTxState("approving");
-          await writeContractAsync({
+          const approveHash = await writeContractAsync({
             address: tokenIn.address,
             abi: ERC20_ABI,
             functionName: "approve",
             args: [CONTRACTS.ROUTER, maxUint256],
             gas: 100000n,
           });
+          await waitForTx(approveHash); // wait for approval before swap
         }
-      }
 
-      setTxState("swapping");
-      let hash: `0x${string}`;
-
-      if (tokenIn.isNative) {
-        // Native RITUAL → Token (wrap + swap)
-        // First wrap to WRITUAL
-        const wrapHash = await writeContractAsync({
-          address: CONTRACTS.WRITUAL,
-          abi: [{ type: "function", name: "deposit", inputs: [], outputs: [], stateMutability: "payable" }],
-          functionName: "deposit",
-          value: parsedIn,
-          gas: 100000n,
-        });
-        // Wait for wrap
-        await waitForTx(wrapHash);
-        // Approve WRITUAL for router
-        const wApproveHash = await writeContractAsync({
-          address: CONTRACTS.WRITUAL,
-          abi: ERC20_ABI,
-          functionName: "approve",
-          args: [CONTRACTS.ROUTER, maxUint256],
-          gas: 100000n,
-        });
-        await waitForTx(wApproveHash);
-        // Swap WRITUAL → tokenOut
-        const writualPath = [CONTRACTS.WRITUAL, ...path.slice(1)];
-        hash = await writeContractAsync({
-          address: CONTRACTS.ROUTER,
-          abi: ROUTER_ABI,
-          functionName: "swapExactTokensForTokens",
-          args: [parsedIn, minOut, writualPath, address, deadline],
-          gas: 400000n,
-        });
-      } else if (tokenOut.isNative) {
-        // Token → Native RITUAL (swap to WRITUAL, then unwrap)
-        const writualPath = [...path.slice(0, -1), CONTRACTS.WRITUAL];
-        hash = await writeContractAsync({
-          address: CONTRACTS.ROUTER,
-          abi: ROUTER_ABI,
-          functionName: "swapExactTokensForTokens",
-          args: [parsedIn, minOut, writualPath, address, deadline],
-          gas: 400000n,
-        });
-        // Unwrap WRITUAL after swap
-        await waitForTx(hash);
-        const writualBal = await checkBalance(CONTRACTS.WRITUAL, address);
-        if (writualBal > 0n) {
-          await writeContractAsync({
-            address: CONTRACTS.WRITUAL,
-            abi: [{ type: "function", name: "withdraw", inputs: [{ name: "wad", type: "uint256" }], outputs: [], stateMutability: "nonpayable" }],
-            functionName: "withdraw",
-            args: [writualBal],
-            gas: 100000n,
-          });
-        }
-      } else {
-        hash = await writeContractAsync({
+        setTxState("swapping");
+        const hash = await writeContractAsync({
           address: CONTRACTS.ROUTER,
           abi: ROUTER_ABI,
           functionName: "swapExactTokensForTokens",
           args: [parsedIn, minOut, path, address, deadline],
           gas: 400000n,
         });
+        setTxHash(hash);
       }
 
-      setTxHash(hash!);
       setTxState("success");
     } catch (err: any) {
       console.error("Swap failed:", err);
@@ -169,13 +98,12 @@ export function useSwap() {
     setTxState("idle");
     setTxHash(null);
     setError(null);
-    setAmountsOut([]);
   }, []);
 
-  return { txState, txHash, error, amountsOut, swap, reset };
+  return { txState, txHash, error, swap, reset };
 }
 
-// ── Liquidity hook ───────────────────────────────────────────────────────────
+// ── Add Liquidity hook ───────────────────────────────────────────────────────
 export function useAddLiquidity() {
   const { address, chainId } = useAccount();
   const { switchChainAsync } = useSwitchChain();
@@ -208,33 +136,35 @@ export function useAddLiquidity() {
       const minB = parsedB * BigInt(10000 - slippageBps) / 10000n;
       const deadline = deadlineMs();
 
-      // Approve both tokens
+      // Approve each non-native token and WAIT for each approval to be mined
       setTxState("approving");
       for (const [tok, amt] of [[tokenA, parsedA], [tokenB, parsedB]] as [Token, bigint][]) {
         if (tok.isNative) continue;
         const allow = await checkAllowance(tok.address, address, CONTRACTS.ROUTER);
         if (allow < amt) {
-          await writeContractAsync({
+          const approveHash = await writeContractAsync({
             address: tok.address,
             abi: ERC20_ABI,
             functionName: "approve",
             args: [CONTRACTS.ROUTER, maxUint256],
             gas: 100000n,
           });
+          await waitForTx(approveHash); // wait before next step
         }
       }
 
       setTxState("adding");
+
       const nativeToken = tokenA.isNative ? tokenA : tokenB.isNative ? tokenB : null;
-      const erc20Token  = tokenA.isNative ? tokenB : tokenB.isNative ? tokenA : null;
+      const erc20Token  = tokenA.isNative ? tokenB  : tokenB.isNative ? tokenA  : null;
       const nativeAmt   = tokenA.isNative ? parsedA : parsedB;
       const erc20Amt    = tokenA.isNative ? parsedB : parsedA;
-      const erc20Min    = tokenA.isNative ? minB : minA;
-      const nativeMin   = tokenA.isNative ? minA : minB;
+      const erc20Min    = tokenA.isNative ? minB    : minA;
+      const nativeMin   = tokenA.isNative ? minA    : minB;
 
       let hash: `0x${string}`;
       if (nativeToken && erc20Token) {
-        // One side is native RITUAL → use addLiquidityRITUAL (payable)
+        // One side is native RITUAL → addLiquidityRITUAL (payable)
         hash = await writeContractAsync({
           address: CONTRACTS.ROUTER,
           abi: ROUTER_ABI,
@@ -244,6 +174,7 @@ export function useAddLiquidity() {
           gas: 500000n,
         });
       } else {
+        // Both ERC20 → addLiquidity
         hash = await writeContractAsync({
           address: CONTRACTS.ROUTER,
           abi: ROUTER_ABI,
@@ -270,6 +201,7 @@ export function useAddLiquidity() {
   return { txState, txHash, error, addLiquidity, reset };
 }
 
+// ── Remove Liquidity hook ────────────────────────────────────────────────────
 export function useRemoveLiquidity() {
   const { address, chainId } = useAccount();
   const { switchChainAsync } = useSwitchChain();
@@ -284,7 +216,6 @@ export function useRemoveLiquidity() {
     tokenA: Token,
     tokenB: Token,
     lpAmount: string,
-    slippageBps = 50,
   ) => {
     if (!address) return;
     try {
@@ -299,25 +230,30 @@ export function useRemoveLiquidity() {
       const lpParsed = parseUnits(lpAmount, 18);
       const deadline = deadlineMs();
 
-      // Approve LP token for router
+      // Approve LP token for router and WAIT for approval to be mined
       setTxState("approving");
       const allow = await checkAllowance(pairAddress, address, CONTRACTS.ROUTER);
       if (allow < lpParsed) {
-        await writeContractAsync({
+        const approveHash = await writeContractAsync({
           address: pairAddress,
           abi: ERC20_ABI,
           functionName: "approve",
           args: [CONTRACTS.ROUTER, maxUint256],
           gas: 100000n,
         });
+        await waitForTx(approveHash); // wait before removeLiquidity
       }
 
       setTxState("removing");
+      // Use WRITUAL address instead of native pseudo-address
+      const addrA = tokenA.isNative ? CONTRACTS.WRITUAL : tokenA.address;
+      const addrB = tokenB.isNative ? CONTRACTS.WRITUAL : tokenB.address;
+
       const hash = await writeContractAsync({
         address: CONTRACTS.ROUTER,
         abi: ROUTER_ABI,
         functionName: "removeLiquidity",
-        args: [tokenA.address, tokenB.address, lpParsed, 0n, 0n, address, deadline],
+        args: [addrA, addrB, lpParsed, 0n, 0n, address, deadline],
         gas: 400000n,
       });
 
@@ -335,15 +271,8 @@ export function useRemoveLiquidity() {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function buildPath(tokenIn: Token, tokenOut: Token): Address[] {
-  const inAddr  = tokenIn.isNative  ? CONTRACTS.WRITUAL : tokenIn.address;
-  const outAddr = tokenOut.isNative ? CONTRACTS.WRITUAL : tokenOut.address;
-  // Direct path (no multi-hop in V1)
-  return [inAddr, outAddr];
-}
-
 async function ethCall(params: object): Promise<string> {
-  // Use window.ethereum in browser to avoid server-side 403 from Ritual RPC
+  // Use window.ethereum to avoid server-side 403 from Ritual RPC
   if (typeof window !== "undefined" && (window as any).ethereum) {
     const res = await (window as any).ethereum.request({ method: "eth_call", params: [params, "latest"] });
     return res || "0x";
@@ -353,75 +282,51 @@ async function ethCall(params: object): Promise<string> {
 
 async function getAmountsOut(amountIn: bigint, path: Address[]): Promise<bigint[]> {
   try {
-    const data = await ethCall({ to: CONTRACTS.ROUTER, data: encodeGetAmountsOut(amountIn, path) });
-    const decoded = decodeAmountsOut(data);
-    if (decoded.length > 0) return decoded;
-  } catch {}
-  return [amountIn, 0n];
+    // selector: getAmountsOut(uint256,address[])
+    const sel = "0xd06ca61f";
+    const amtHex = amountIn.toString(16).padStart(64, "0");
+    const offsetHex = "0000000000000000000000000000000000000000000000000000000000000040";
+    const lenHex = path.length.toString(16).padStart(64, "0");
+    const addrsHex = path.map(a => a.slice(2).toLowerCase().padStart(64, "0")).join("");
+    const data = sel + amtHex + offsetHex + lenHex + addrsHex;
+    const hex = await ethCall({ to: CONTRACTS.ROUTER, data });
+    if (!hex || hex === "0x") return [amountIn, 0n];
+    const raw = hex.slice(2);
+    const offset = parseInt(raw.slice(0, 64), 16) * 2;
+    const count  = parseInt(raw.slice(offset, offset + 64), 16);
+    const amounts: bigint[] = [];
+    for (let i = 0; i < count; i++) {
+      amounts.push(BigInt("0x" + raw.slice(offset + 64 + i * 64, offset + 128 + i * 64)));
+    }
+    return amounts;
+  } catch {
+    return [amountIn, 0n];
+  }
 }
 
 async function checkAllowance(token: Address, owner: Address, spender: Address): Promise<bigint> {
   try {
-    const data = await ethCall({ to: token, data: encodeAllowance(owner, spender) });
-    if (data && data !== "0x") return BigInt(data);
+    const data = "0xdd62ed3e" + owner.slice(2).padStart(64, "0") + spender.slice(2).padStart(64, "0");
+    const res = await ethCall({ to: token, data });
+    if (res && res !== "0x") return BigInt(res);
   } catch {}
   return 0n;
 }
 
-async function checkBalance(token: Address, owner: Address): Promise<bigint> {
-  try {
-    const data = await ethCall({ to: token, data: encodeBalanceOf(owner) });
-    if (data && data !== "0x") return BigInt(data);
-  } catch {}
-  return 0n;
-}
-
-async function waitForTx(hash: `0x${string}`, maxRetries = 30): Promise<void> {
+async function waitForTx(hash: `0x${string}`, maxRetries = 40): Promise<void> {
   for (let i = 0; i < maxRetries; i++) {
     await new Promise(r => setTimeout(r, 2000));
     try {
-      const receipt = typeof window !== "undefined" && (window as any).ethereum
-        ? await (window as any).ethereum.request({ method: "eth_getTransactionReceipt", params: [hash] })
-        : null;
+      if (typeof window === "undefined" || !(window as any).ethereum) continue;
+      const receipt = await (window as any).ethereum.request({
+        method: "eth_getTransactionReceipt",
+        params: [hash],
+      });
       if (receipt?.status === "0x1") return;
-      if (receipt?.status === "0x0") throw new Error("Transaction reverted");
+      if (receipt?.status === "0x0") throw new Error("Transaction reverted on-chain");
     } catch (e: any) {
       if (e?.message?.includes("reverted")) throw e;
     }
   }
-}
-
-// Minimal ABI encoding helpers (avoid viem dependency in pure utils)
-function encodeGetAmountsOut(amountIn: bigint, path: Address[]): string {
-  // selector: getAmountsOut(uint256,address[])
-  const sel = "0xd06ca61f";
-  const amtHex = amountIn.toString(16).padStart(64, "0");
-  const offsetHex = "0000000000000000000000000000000000000000000000000000000000000040";
-  const lenHex = path.length.toString(16).padStart(64, "0");
-  const addrsHex = path.map(a => a.slice(2).toLowerCase().padStart(64, "0")).join("");
-  return sel + amtHex + offsetHex + lenHex + addrsHex;
-}
-
-function decodeAmountsOut(hex: string): bigint[] {
-  try {
-    if (!hex || hex === "0x") return [];
-    const data = hex.slice(2);
-    const offset = parseInt(data.slice(0, 64), 16) * 2;
-    const count = parseInt(data.slice(offset, offset + 64), 16);
-    const amounts: bigint[] = [];
-    for (let i = 0; i < count; i++) {
-      amounts.push(BigInt("0x" + data.slice(offset + 64 + i * 64, offset + 128 + i * 64)));
-    }
-    return amounts;
-  } catch { return []; }
-}
-
-function encodeAllowance(owner: Address, spender: Address): string {
-  return "0xdd62ed3e" +
-    owner.slice(2).padStart(64, "0") +
-    spender.slice(2).padStart(64, "0");
-}
-
-function encodeBalanceOf(owner: Address): string {
-  return "0x70a08231" + owner.slice(2).padStart(64, "0");
+  throw new Error("Transaction not mined after timeout");
 }
