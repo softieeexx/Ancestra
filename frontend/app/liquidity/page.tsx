@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useAccount, useReadContract } from "wagmi";
+import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { formatUnits, parseUnits, Address } from "viem";
 import AppNav from "@/components/AppNav";
 import WalletConnect from "@/components/WalletConnect";
 import TokenSelector from "@/components/dex/TokenSelector";
 import TxStatus from "@/components/dex/TxStatus";
 import { TOKENS, Token, CONTRACTS, POOLS } from "@/lib/constants";
-import { FACTORY_ABI, PAIR_ABI, ERC20_ABI, ROUTER_ABI } from "@/lib/abi";
+import { FACTORY_ABI, PAIR_ABI, ERC20_ABI, ROUTER_ABI, MOCK_ERC20_ABI } from "@/lib/abi";
 import { useAddLiquidity, useRemoveLiquidity } from "@/hooks/useRouter";
 
 type Tab = "add" | "remove";

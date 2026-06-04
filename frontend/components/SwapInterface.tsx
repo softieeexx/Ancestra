@@ -87,6 +87,7 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
     reset,
     reserve0,
     reserve1,
+    hasLiquidity,
   } = useAncestra(mode, onSwapSuccess);
 
   const [arrowSpin, setArrowSpin] = useState(false);
@@ -297,14 +298,37 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
           </div>
         </div>
 
+        {/* ── No-liquidity warning ─────────────────────── */}
+        {!hasLiquidity && (
+          <div
+            className="mx-4 mb-2 rounded-xl px-4 py-3 flex items-center gap-3"
+            style={{
+              background: "rgba(248,113,113,0.08)",
+              border: "1px solid rgba(248,113,113,0.25)",
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
+              <path d="M8 2L14 13H2L8 2Z" stroke="#F87171" strokeWidth="1.4" strokeLinejoin="round" />
+              <path d="M8 6v3M8 11v0.5" stroke="#F87171" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+            <div>
+              <p className="text-xs font-semibold" style={{ color: "#F87171" }}>No liquidity in this pool</p>
+              <p className="text-xs mt-0.5" style={{ color: "rgba(248,113,113,0.6)" }}>
+                Add liquidity first on the{" "}
+                <a href="/liquidity" className="underline hover:opacity-80 transition-opacity">Liquidity page</a>.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ── Swap button ─────────────────────────────── */}
         <div className="px-4 pb-4">
           <button
             onClick={swap}
-            disabled={!hasAmount || isBusy}
+            disabled={!hasAmount || isBusy || !hasLiquidity}
             className="w-full py-4 rounded-xl font-semibold text-sm tracking-wide transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed relative overflow-hidden"
             style={
-              !hasAmount || isBusy
+              !hasAmount || isBusy || !hasLiquidity
                 ? {
                     background: "rgba(255,255,255,0.04)",
                     color: "rgba(255,255,255,0.2)",
@@ -322,6 +346,8 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
                 <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 Confirming in wallet…
               </span>
+            ) : !hasLiquidity ? (
+              "Pool has no liquidity"
             ) : !hasAmount ? (
               "Enter an amount"
             ) : (

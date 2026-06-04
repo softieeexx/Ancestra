@@ -225,13 +225,33 @@ export function useAddLiquidity() {
       }
 
       setTxState("adding");
-      const hash = await writeContractAsync({
-        address: CONTRACTS.ROUTER,
-        abi: ROUTER_ABI,
-        functionName: "addLiquidity",
-        args: [tokenA.address, tokenB.address, parsedA, parsedB, minA, minB, address, deadline],
-        gas: 500000n,
-      });
+      const nativeToken = tokenA.isNative ? tokenA : tokenB.isNative ? tokenB : null;
+      const erc20Token  = tokenA.isNative ? tokenB : tokenB.isNative ? tokenA : null;
+      const nativeAmt   = tokenA.isNative ? parsedA : parsedB;
+      const erc20Amt    = tokenA.isNative ? parsedB : parsedA;
+      const erc20Min    = tokenA.isNative ? minB : minA;
+      const nativeMin   = tokenA.isNative ? minA : minB;
+
+      let hash: `0x${string}`;
+      if (nativeToken && erc20Token) {
+        // One side is native RITUAL → use addLiquidityRITUAL (payable)
+        hash = await writeContractAsync({
+          address: CONTRACTS.ROUTER,
+          abi: ROUTER_ABI,
+          functionName: "addLiquidityRITUAL",
+          args: [erc20Token.address, erc20Amt, erc20Min, nativeMin, address, deadline],
+          value: nativeAmt,
+          gas: 500000n,
+        });
+      } else {
+        hash = await writeContractAsync({
+          address: CONTRACTS.ROUTER,
+          abi: ROUTER_ABI,
+          functionName: "addLiquidity",
+          args: [tokenA.address, tokenB.address, parsedA, parsedB, minA, minB, address, deadline],
+          gas: 500000n,
+        });
+      }
 
       setTxHash(hash);
       setTxState("success");

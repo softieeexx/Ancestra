@@ -2,8 +2,8 @@
 
 import { useState, useCallback } from "react";
 import { useAccount, useWriteContract, useReadContract, useSwitchChain } from "wagmi";
-import { formatUnits, parseUnits, Address, maxUint256 } from "viem";
-import { PAIR_ABI, ERC20_ABI, ROUTER_ABI } from "@/lib/abi";
+import { formatUnits, parseUnits, Address } from "viem";
+import { PAIR_ABI, ROUTER_ABI } from "@/lib/abi";
 import { POOLS, CONTRACTS, RITUAL_CHAIN_ID, ModeId, deadlineMs } from "@/lib/constants";
 
 export type TxState = "idle" | "approving" | "swapping" | "success" | "error";
@@ -118,32 +118,7 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
       const expectedOut = numerator / denominator;
       const minOut      = expectedOut * 9970n / 10000n;
 
-      // Step 1: Wrap native RITUAL → WRITUAL
-      setTxState("approving");
-      const wrapHash = await writeContractAsync({
-        address: CONTRACTS.WRITUAL,
-        abi: [{ type: "function", name: "deposit", inputs: [], outputs: [], stateMutability: "payable" }],
-        functionName: "deposit",
-        value: parsedIn,
-        gas: 60000n,
-      });
-      // Wait for wrap receipt
-      await waitForReceipt(wrapHash);
-
-      // Step 2: Approve WRITUAL for router (infinite, skip if already approved)
-      const existingAllowance = await readAllowance(CONTRACTS.WRITUAL, address, CONTRACTS.ROUTER);
-      if (existingAllowance < parsedIn) {
-        const approveHash = await writeContractAsync({
-          address: CONTRACTS.WRITUAL,
-          abi: ERC20_ABI,
-          functionName: "approve",
-          args: [CONTRACTS.ROUTER, maxUint256],
-          gas: 60000n,
-        });
-        await waitForReceipt(approveHash);
-      }
-
-      // Step 3: Swap WRITUAL → token1
+      // Step 1–3 replaced: use swapExactRITUALForTokens (payable, no manual wrap needed)
       setTxState("swapping");
       const path: Address[] = [CONTRACTS.WRITUAL, pool.token1.address];
       const deadline = deadlineMs();
@@ -151,8 +126,9 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
       const hash = await writeContractAsync({
         address: CONTRACTS.ROUTER,
         abi: ROUTER_ABI,
-        functionName: "swapExactTokensForTokens",
-        args: [parsedIn, minOut, path, address, deadline],
+        functionName: "swapExactRITUALForTokens",
+        args: [minOut, path, address, deadline],
+        value: parsedIn,
         gas: 300000n,
       });
 
@@ -183,38 +159,3 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
     hasLiquidity,
   };
 }
-
-// ── Helpers (browser-safe, use wagmi public client via fetch) ────────────────
-
-async function readAllowance(token: Address, owner: Address, spender: Address): Promise<bigint> {
-  // Use wagmi's window.ethereum if available; fallback to 0 so we always approve
-  try {
-    const sel = "0xdd62ed3e";
-    const data = sel + owner.slice(2).padStart(64, "0") + spender.slice(2).padStart(64, "0");
-    // wagmi provider is set up in the app; we read via the configured transport
-    const res = await (window as any).ethereum?.request({
-      method: "eth_call",
-      params: [{ to: token, data }, "latest"],
-    });
-    if (res) return BigInt(res);
-  } catch {}
-  return 0n;
-}
-
-async function waitForReceipt(hash: `0x${string}`, maxRetries = 24): Promise<void> {
-  for (let i = 0; i < maxRetries; i++) {
-    await delay(2500);
-    try {
-      const receipt = await (window as any).ethereum?.request({
-        method: "eth_getTransactionReceipt",
-        params: [hash],
-      });
-      if (receipt?.status === "0x1") return;
-      if (receipt?.status === "0x0") throw new Error("Transaction reverted");
-    } catch (e: any) {
-      if (e?.message?.includes("reverted")) throw e;
-    }
-  }
-}
-
-const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
