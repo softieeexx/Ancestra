@@ -32,7 +32,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ["Georgia", "serif"],
+        display: ["Cinzel", "Georgia", "serif"],
+        cinzel: ["Cinzel", "serif"],
         body: ["Inter", "system-ui", "sans-serif"],
       },
       backgroundImage: {

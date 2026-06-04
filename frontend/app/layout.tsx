@@ -15,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="ancestral-bg">
+      <body>
         <Providers>
           <div className="relative min-h-screen flex flex-col">
             {children}
