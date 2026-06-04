@@ -11,7 +11,7 @@ import { TOKENS, Token, CONTRACTS, POOLS } from "@/lib/constants";
 import { FACTORY_ABI, PAIR_ABI, ERC20_ABI, ROUTER_ABI, MOCK_ERC20_ABI } from "@/lib/abi";
 import { useAddLiquidity, useRemoveLiquidity } from "@/hooks/useRouter";
 
-type Tab = "add" | "remove";
+type Tab = "add" | "remove" | "faucet";
 
 export default function LiquidityPage() {
   const { isConnected, address } = useAccount();
@@ -31,7 +31,7 @@ export default function LiquidityPage() {
 
           {/* Tab toggle */}
           <div className="flex rounded-xl overflow-hidden mb-6" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-            {(["add", "remove"] as Tab[]).map(t => (
+            {(["add", "remove", "faucet"] as Tab[]).map(t => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -42,7 +42,7 @@ export default function LiquidityPage() {
                     : { background: "rgba(255,255,255,0.02)", color: "rgba(255,255,255,0.4)" }
                 }
               >
-                {t === "add" ? "Add Liquidity" : "Remove Liquidity"}
+                {t === "add" ? "Add Liquidity" : t === "remove" ? "Remove Liquidity" : "Faucet"}
               </button>
             ))}
           </div>
@@ -54,8 +54,10 @@ export default function LiquidityPage() {
             </div>
           ) : tab === "add" ? (
             <AddLiquidity address={address!} />
-          ) : (
+          ) : tab === "remove" ? (
             <RemoveLiquidity address={address!} />
+          ) : (
+            <FaucetPanel address={address!} />
           )}
         </div>
       </div>
@@ -255,6 +257,113 @@ function RemoveLiquidity({ address }: { address: Address }) {
         </button>
       </div>
       {txState !== "idle" && <div className="px-5 pb-5"><TxStatus txState={txState} txHash={txHash} error={error} onReset={reset} /></div>}
+    </div>
+  );
+}
+
+// ── Faucet Panel ─────────────────────────────────────────────────────────────
+
+const FAUCET_TOKENS = [
+  { address: CONTRACTS.USDC, symbol: "USDC", color: "#4ADE80", name: "USD Coin" },
+  { address: CONTRACTS.WETH, symbol: "WETH", color: "#FBBF24", name: "Wrapped Ether" },
+  { address: CONTRACTS.DAI,  symbol: "DAI",  color: "#F87171", name: "Dai Stablecoin" },
+] as const;
+
+function FaucetPanel({ address }: { address: Address }) {
+  const { writeContractAsync } = useWriteContract();
+  const [minting, setMinting] = useState<string | null>(null);
+  const [minted, setMinted]   = useState<string | null>(null);
+  const [mintError, setMintError] = useState<string | null>(null);
+
+  const mint = useCallback(async (token: typeof FAUCET_TOKENS[number]) => {
+    setMinting(token.symbol);
+    setMinted(null);
+    setMintError(null);
+    try {
+      await writeContractAsync({
+        address: token.address,
+        abi: MOCK_ERC20_ABI,
+        functionName: "faucet",
+        args: [address],
+        gas: 100000n,
+      });
+      setMinted(token.symbol);
+    } catch (err: any) {
+      setMintError(err?.shortMessage || err?.message || "Mint failed");
+    } finally {
+      setMinting(null);
+    }
+  }, [address, writeContractAsync]);
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{ background: "rgba(13,10,3,0.7)", backdropFilter: "blur(24px)", border: "1px solid rgba(212,168,83,0.12)" }}
+    >
+      <div className="p-5">
+        <p className="text-xs text-earth-100/40 mb-1">Testnet Faucet</p>
+        <p className="text-sm text-white/60 mb-5">
+          Mint 1,000 test tokens to your wallet. No limit — use as needed for testing.
+        </p>
+
+        <div className="space-y-3">
+          {FAUCET_TOKENS.map(token => (
+            <div
+              key={token.symbol}
+              className="flex items-center justify-between rounded-xl px-4 py-3"
+              style={{ background: `${token.color}08`, border: `1px solid ${token.color}18` }}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-black flex-shrink-0"
+                  style={{ background: token.color }}
+                >
+                  {token.symbol.slice(0, 2)}
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-white">{token.symbol}</div>
+                  <div className="text-xs text-earth-100/40">{token.name}</div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => mint(token)}
+                disabled={minting === token.symbol}
+                className="px-4 py-2 rounded-lg text-xs font-semibold transition-all hover:opacity-80 active:scale-95 disabled:opacity-50"
+                style={{ background: `${token.color}18`, color: token.color, border: `1px solid ${token.color}30` }}
+              >
+                {minting === token.symbol ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                    Minting…
+                  </span>
+                ) : "Mint 1,000"}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {minted && (
+          <div className="mt-4 rounded-xl px-4 py-3 flex items-center gap-2" style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)" }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2.5 7L5.5 10L11.5 4" stroke="#4ADE80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <p className="text-xs font-semibold" style={{ color: "#4ADE80" }}>
+              1,000 {minted} minted to your wallet
+            </p>
+          </div>
+        )}
+
+        {mintError && (
+          <div className="mt-4 rounded-xl px-4 py-3" style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)" }}>
+            <p className="text-xs font-semibold" style={{ color: "#F87171" }}>{mintError}</p>
+          </div>
+        )}
+
+        <p className="text-xs text-earth-100/25 mt-5 text-center">
+          Mock tokens only — no real value · Ritual Testnet
+        </p>
+      </div>
     </div>
   );
 }
