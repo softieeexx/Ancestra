@@ -322,67 +322,52 @@ function buildPath(tokenIn: Token, tokenOut: Token): Address[] {
   return [inAddr, outAddr];
 }
 
+async function ethCall(params: object): Promise<string> {
+  // Use window.ethereum in browser to avoid server-side 403 from Ritual RPC
+  if (typeof window !== "undefined" && (window as any).ethereum) {
+    const res = await (window as any).ethereum.request({ method: "eth_call", params: [params, "latest"] });
+    return res || "0x";
+  }
+  return "0x";
+}
+
 async function getAmountsOut(amountIn: bigint, path: Address[]): Promise<bigint[]> {
-  const result = await fetch(`https://rpc.ritualfoundation.org`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0", id: 1, method: "eth_call",
-      params: [{
-        to: CONTRACTS.ROUTER,
-        data: encodeGetAmountsOut(amountIn, path),
-      }, "latest"],
-    }),
-  });
-  const data = await result.json();
-  if (data.error) return [amountIn, 0n];
-  const decoded = decodeAmountsOut(data.result);
-  return decoded;
+  try {
+    const data = await ethCall({ to: CONTRACTS.ROUTER, data: encodeGetAmountsOut(amountIn, path) });
+    const decoded = decodeAmountsOut(data);
+    if (decoded.length > 0) return decoded;
+  } catch {}
+  return [amountIn, 0n];
 }
 
 async function checkAllowance(token: Address, owner: Address, spender: Address): Promise<bigint> {
   try {
-    const result = await fetch("https://rpc.ritualfoundation.org", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0", id: 1, method: "eth_call",
-        params: [{ to: token, data: encodeAllowance(owner, spender) }, "latest"],
-      }),
-    });
-    const data = await result.json();
-    if (data.result) return BigInt(data.result);
-    return 0n;
-  } catch { return 0n; }
+    const data = await ethCall({ to: token, data: encodeAllowance(owner, spender) });
+    if (data && data !== "0x") return BigInt(data);
+  } catch {}
+  return 0n;
 }
 
 async function checkBalance(token: Address, owner: Address): Promise<bigint> {
   try {
-    const result = await fetch("https://rpc.ritualfoundation.org", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0", id: 1, method: "eth_call",
-        params: [{ to: token, data: encodeBalanceOf(owner) }, "latest"],
-      }),
-    });
-    const data = await result.json();
-    if (data.result) return BigInt(data.result);
-    return 0n;
-  } catch { return 0n; }
+    const data = await ethCall({ to: token, data: encodeBalanceOf(owner) });
+    if (data && data !== "0x") return BigInt(data);
+  } catch {}
+  return 0n;
 }
 
 async function waitForTx(hash: `0x${string}`, maxRetries = 30): Promise<void> {
   for (let i = 0; i < maxRetries; i++) {
     await new Promise(r => setTimeout(r, 2000));
-    const result = await fetch("https://rpc.ritualfoundation.org", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getTransactionReceipt", params: [hash] }),
-    });
-    const data = await result.json();
-    if (data.result?.status === "0x1") return;
-    if (data.result?.status === "0x0") throw new Error("Transaction reverted");
+    try {
+      const receipt = typeof window !== "undefined" && (window as any).ethereum
+        ? await (window as any).ethereum.request({ method: "eth_getTransactionReceipt", params: [hash] })
+        : null;
+      if (receipt?.status === "0x1") return;
+      if (receipt?.status === "0x0") throw new Error("Transaction reverted");
+    } catch (e: any) {
+      if (e?.message?.includes("reverted")) throw e;
+    }
   }
 }
 

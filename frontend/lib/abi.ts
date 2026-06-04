@@ -89,6 +89,12 @@ export const ROUTER_ABI = [
   { type: "function", name: "getAmountsIn", inputs: [{ name: "amountOut", type: "uint256" }, { name: "path", type: "address[]" }], outputs: [{ name: "amounts", type: "uint256[]" }], stateMutability: "view" },
 ] as const;
 
+// ── Mock ERC20 (testnet only) — has open faucet ──────────────────────────────
+export const MOCK_ERC20_ABI = [
+  ...ERC20_ABI,
+  { type: "function", name: "faucet", inputs: [{ name: "to", type: "address" }], outputs: [], stateMutability: "nonpayable" },
+] as const;
+
 // Legacy pool ABI kept for swap count event queries
 export const ANCESTRA_POOL_ABI = [
   { type: "event", name: "Swapped", inputs: [{ name: "sender", type: "address", indexed: true }, { name: "tokenIn", type: "address", indexed: true }, { name: "tokenOut", type: "address", indexed: true }, { name: "amountIn", type: "uint256", indexed: false }, { name: "amountOut", type: "uint256", indexed: false }, { name: "fee", type: "uint256", indexed: false }, { name: "timestamp", type: "uint256", indexed: false }], anonymous: false },

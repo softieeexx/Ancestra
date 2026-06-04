@@ -27,7 +27,7 @@ export default function AppNav() {
       style={{ borderBottom: "1px solid rgba(201,168,76,0.10)" }}
     >
       {/* ── Logo ──────────────────────────────────────── */}
-      <Link href="/swap" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity flex-shrink-0">
+      <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity flex-shrink-0">
         <div
           className="w-7 h-7 rounded-md overflow-hidden relative flex-shrink-0"
           style={{ background: "#1a6b3a" }}
