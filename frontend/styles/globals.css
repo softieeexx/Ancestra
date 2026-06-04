@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cinzel:wght@400;600;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cinzel:wght@400;600;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
 
 :root {
   --ritual-gold: #D4A853;
@@ -46,6 +46,40 @@ html, body {
     linear-gradient(180deg, transparent 0%, rgba(13, 10, 3, 0.4) 100%),
     linear-gradient(90deg, transparent 0%, rgba(13, 10, 3, 0.2) 50%, transparent 100%);
   pointer-events: none;
+}
+
+/* ── Landing page effects ───────────────────────────── */
+
+/* Grain / noise texture */
+.hero-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 160px;
+}
+
+/* Green dot pulse */
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(61, 220, 132, 0.5); }
+  50%       { box-shadow: 0 0 0 5px rgba(61, 220, 132, 0); }
+}
+.dot-pulse {
+  animation: dot-pulse 2.2s ease-in-out infinite;
+}
+
+/* CONNECT WALLET button */
+.connect-btn {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.connect-btn:hover {
+  border-color: #c9a84c !important;
+  box-shadow: 0 0 22px rgba(201, 168, 76, 0.35), inset 0 0 16px rgba(201, 168, 76, 0.06);
+  background: rgba(201, 168, 76, 0.07) !important;
 }
 
 /* Smooth transitions */

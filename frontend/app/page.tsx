@@ -5,28 +5,67 @@ import Link from "next/link";
 import { ConnectKitButton } from "connectkit";
 import { useRouter } from "next/navigation";
 
+/* ── Small reusable pieces ──────────────────────────────── */
+
+function LogoIcon() {
+  return (
+    <div
+      className="w-10 h-10 rounded-md overflow-hidden flex-shrink-0 relative"
+      style={{ background: "#1a6b3a" }}
+    >
+      <Image src="/logo.jpeg" alt="Ancestra" fill className="object-cover" priority />
+    </div>
+  );
+}
+
 function DiamondIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-      <rect x="10" y="1.5" width="12" height="12" rx="1" transform="rotate(45 10 1.5)" stroke="#D4A853" strokeWidth="1.2" />
-      <rect x="10" y="5"   width="6"  height="6"  rx="0.5" transform="rotate(45 10 5)"   stroke="#D4A853" strokeWidth="0.8" />
+    <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden>
+      <rect x="10" y="1.5" width="12" height="12" rx="0.8" transform="rotate(45 10 1.5)" stroke="#c9a84c" strokeWidth="1.3" />
+      <rect x="10" y="5.2" width="5.6" height="5.6" rx="0.4" transform="rotate(45 10 5.2)" stroke="#c9a84c" strokeWidth="0.85" />
     </svg>
   );
 }
 
-function ConnectButton() {
+function DocsButton() {
+  return (
+    <Link
+      href="/admin"
+      className="flex items-center gap-2 px-5 py-2 rounded-full font-rajdhani font-semibold text-xs transition-colors hover:bg-white/5"
+      style={{
+        border: "1px solid rgba(201,168,76,0.45)",
+        color: "#c9a84c",
+        letterSpacing: "0.15em",
+      }}
+    >
+      <svg width="13" height="13" viewBox="0 0 12 12" fill="none" aria-hidden>
+        <rect x="0.6" y="0.6" width="4.2" height="4.2" rx="0.5" stroke="currentColor" strokeWidth="1" />
+        <rect x="7.2" y="0.6" width="4.2" height="4.2" rx="0.5" stroke="currentColor" strokeWidth="1" />
+        <rect x="0.6" y="7.2" width="4.2" height="4.2" rx="0.5" stroke="currentColor" strokeWidth="1" />
+        <rect x="7.2" y="7.2" width="4.2" height="4.2" rx="0.5" stroke="currentColor" strokeWidth="1" />
+      </svg>
+      DOCS
+    </Link>
+  );
+}
+
+function ConnectWalletButton() {
   const router = useRouter();
   return (
     <ConnectKitButton.Custom>
       {({ isConnected, show, address }) => (
         <button
           onClick={() => { isConnected ? router.push("/swap") : show?.(); }}
-          className="px-14 py-4 text-sm font-cinzel uppercase transition-all duration-200 hover:bg-ritual/10 active:scale-[0.98]"
+          className="connect-btn font-rajdhani font-semibold uppercase"
           style={{
-            border: "1px solid #D4A853",
-            color: "#D4A853",
-            background: "rgba(0,0,0,0.2)",
-            letterSpacing: "0.3em",
+            border: "1px solid rgba(201,168,76,0.7)",
+            color: "#c9a84c",
+            background: "rgba(0,0,0,0.22)",
+            padding: "14px 52px",
+            fontSize: "0.8rem",
+            letterSpacing: "0.28em",
+            cursor: "pointer",
+            minWidth: "220px",
           }}
         >
           {isConnected ? `${address?.slice(0, 6)}…${address?.slice(-4)}` : "Connect Wallet"}
@@ -42,11 +81,13 @@ const FEATURES = [
   { title: "COMMUNITY DRIVEN", desc: "By the people, for the people" },
 ];
 
+/* ── Page ───────────────────────────────────────────────── */
+
 export default function HomePage() {
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#07050A]">
+    <div className="hero-grain relative w-full h-screen overflow-hidden" style={{ background: "#0a0a0a" }}>
 
-      {/* ── Background image ── */}
+      {/* 1 ─ Background photo */}
       <Image
         src="/hero-bg.jpeg"
         alt=""
@@ -56,130 +97,174 @@ export default function HomePage() {
         style={{ zIndex: 0 }}
       />
 
-      {/* ── Left-to-right dark gradient so text stays readable ── */}
+      {/* 2 ─ Teal crystal-tower glow (center-right) */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 pointer-events-none"
         style={{
           zIndex: 1,
           background:
-            "linear-gradient(100deg, rgba(5,3,9,0.92) 0%, rgba(5,3,9,0.85) 28%, rgba(5,3,9,0.55) 50%, rgba(5,3,9,0.15) 70%, transparent 88%)",
+            "radial-gradient(ellipse 42% 62% at 64% 44%, rgba(0,210,190,0.13) 0%, rgba(0,180,160,0.06) 40%, transparent 72%)",
         }}
       />
 
-      {/* ── Top vignette ── */}
+      {/* 3 ─ Left-half readability dark fade */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 pointer-events-none"
         style={{
-          zIndex: 1,
-          background: "linear-gradient(180deg, rgba(5,3,9,0.55) 0%, transparent 20%)",
+          zIndex: 2,
+          background:
+            "linear-gradient(105deg, rgba(10,8,14,0.96) 0%, rgba(10,8,14,0.90) 25%, rgba(10,8,14,0.65) 45%, rgba(10,8,14,0.20) 65%, transparent 82%)",
         }}
       />
 
-      {/* ── UI ── */}
-      <div className="relative flex flex-col h-full" style={{ zIndex: 2 }}>
+      {/* 4 ─ Top vignette */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          zIndex: 2,
+          background: "linear-gradient(180deg, rgba(10,8,14,0.6) 0%, transparent 18%)",
+        }}
+      />
 
-        {/* Navbar */}
-        <nav className="flex items-center justify-between px-8 py-5 flex-shrink-0">
+      {/* 5 ─ Bottom vignette (ties into feature bar) */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          zIndex: 2,
+          background: "linear-gradient(0deg, rgba(10,8,14,0.9) 0%, transparent 30%)",
+        }}
+      />
+
+      {/* 6 ─ UI */}
+      <div className="relative flex flex-col h-full" style={{ zIndex: 4 }}>
+
+        {/* ── Navbar ────────────────────────────────── */}
+        <nav className="flex items-center justify-between px-8 md:px-12 py-5 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-md overflow-hidden flex-shrink-0">
-              <Image src="/logo.jpeg" alt="Ancestra" fill className="object-cover" priority />
-            </div>
+            <LogoIcon />
             <span
-              className="font-cinzel text-white font-semibold"
-              style={{ fontSize: "1rem", letterSpacing: "0.25em" }}
+              className="font-cinzel text-white font-semibold tracking-[0.22em]"
+              style={{ fontSize: "0.95rem" }}
             >
               ANCESTRA
             </span>
           </div>
-
-          <Link
-            href="/admin"
-            className="flex items-center gap-2 px-5 py-2 rounded-full font-cinzel text-xs tracking-widest transition-colors hover:bg-ritual/10"
-            style={{ border: "1px solid rgba(212,168,83,0.5)", color: "#D4A853" }}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <rect x="0.5" y="0.5" width="4.5" height="4.5" rx="0.5" stroke="currentColor" strokeWidth="1" />
-              <rect x="7"   y="0.5" width="4.5" height="4.5" rx="0.5" stroke="currentColor" strokeWidth="1" />
-              <rect x="0.5" y="7"   width="4.5" height="4.5" rx="0.5" stroke="currentColor" strokeWidth="1" />
-              <rect x="7"   y="7"   width="4.5" height="4.5" rx="0.5" stroke="currentColor" strokeWidth="1" />
-            </svg>
-            DOCS
-          </Link>
+          <DocsButton />
         </nav>
 
-        {/* Hero */}
-        <main className="flex-1 flex items-center px-8 md:px-14 lg:px-20 pb-8">
-          <div style={{ maxWidth: "520px" }}>
+        {/* ── Hero content ──────────────────────────── */}
+        <main className="flex-1 flex items-center px-8 md:px-12 lg:px-20 pb-4">
+          <div style={{ maxWidth: "540px" }}>
+
+            {/* Headline */}
             <h1
-              className="font-cinzel font-black text-white leading-[0.88] mb-7 select-none"
+              className="font-cinzel font-black text-white select-none"
               style={{
-                fontSize: "clamp(4.5rem, 12vw, 9.5rem)",
-                textShadow: "0 2px 60px rgba(0,0,0,0.9)",
-                letterSpacing: "-0.01em",
+                fontSize: "clamp(4.2rem, 11.5vw, 10rem)",
+                lineHeight: 0.88,
+                letterSpacing: "0.01em",
+                marginBottom: "1.6rem",
+                textShadow: "0 2px 80px rgba(0,0,0,0.95)",
               }}
             >
               ANCESTRA
             </h1>
 
+            {/* Gold subtitle */}
             <p
-              className="font-cinzel text-xs mb-5"
-              style={{ color: "#C4953E", letterSpacing: "0.42em" }}
+              className="font-rajdhani font-semibold mb-5"
+              style={{
+                color: "#c9a84c",
+                fontSize: "0.72rem",
+                letterSpacing: "0.44em",
+              }}
             >
               ANCESTRAL.&nbsp;&nbsp;RITUAL-CENTRIC.
             </p>
 
+            {/* Body copy */}
             <p
-              className="text-base leading-relaxed mb-9"
-              style={{ color: "rgba(245,230,200,0.65)", maxWidth: "360px" }}
+              className="mb-9 leading-relaxed"
+              style={{
+                color: "#cccccc",
+                fontSize: "1.05rem",
+                maxWidth: "370px",
+                fontFamily: "Inter, sans-serif",
+                fontWeight: 300,
+              }}
             >
               Trade RITUAL against the world through ancestral liquidity.
             </p>
 
-            <ConnectButton />
+            {/* CTA */}
+            <ConnectWalletButton />
 
-            <div className="flex items-center gap-2.5 mt-6">
+            {/* Status badge */}
+            <div className="flex items-center gap-3 mt-6">
               <span
-                className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ background: "#4ADE80", boxShadow: "0 0 8px #4ADE80" }}
+                className="dot-pulse w-2 h-2 rounded-full flex-shrink-0"
+                style={{ background: "#3ddc84" }}
               />
               <span
-                className="font-cinzel text-xs"
-                style={{ color: "rgba(255,255,255,0.38)", letterSpacing: "0.3em" }}
+                className="font-rajdhani font-medium"
+                style={{
+                  color: "rgba(255,255,255,0.38)",
+                  fontSize: "0.7rem",
+                  letterSpacing: "0.3em",
+                }}
               >
                 BUILT ON RITUAL TESTNET
               </span>
             </div>
+
           </div>
         </main>
 
-        {/* Bottom feature bar */}
+        {/* ── Bottom feature bar ────────────────────── */}
         <div className="flex-shrink-0">
+          {/* Gold top border */}
           <div
-            className="w-full h-px"
             style={{
+              height: "1px",
               background:
-                "linear-gradient(90deg, rgba(212,168,83,0.55) 0%, rgba(212,168,83,0.3) 55%, transparent 100%)",
+                "linear-gradient(90deg, rgba(201,168,76,0.65) 0%, rgba(201,168,76,0.4) 50%, rgba(201,168,76,0.1) 100%)",
             }}
           />
           <div
             className="grid grid-cols-3"
-            style={{ background: "rgba(5,3,9,0.88)", backdropFilter: "blur(16px)" }}
+            style={{ background: "rgba(10,8,14,0.92)", backdropFilter: "blur(18px)" }}
           >
             {FEATURES.map((f, i) => (
               <div
                 key={f.title}
-                className="flex items-start gap-4 px-7 py-6"
-                style={{ borderRight: i < 2 ? "1px solid rgba(212,168,83,0.1)" : "none" }}
+                className="flex items-start gap-3.5 px-8 py-6"
+                style={{
+                  borderRight: i < 2 ? "1px solid rgba(201,168,76,0.15)" : "none",
+                }}
               >
-                <div className="flex-shrink-0 mt-0.5"><DiamondIcon /></div>
+                <div className="flex-shrink-0 mt-0.5">
+                  <DiamondIcon />
+                </div>
                 <div>
                   <p
-                    className="font-cinzel text-xs font-semibold mb-1.5"
-                    style={{ color: "rgba(255,255,255,0.85)", letterSpacing: "0.18em" }}
+                    className="font-rajdhani font-bold mb-1"
+                    style={{
+                      color: "rgba(255,255,255,0.88)",
+                      fontSize: "0.72rem",
+                      letterSpacing: "0.2em",
+                    }}
                   >
                     {f.title}
                   </p>
-                  <p className="text-xs leading-relaxed" style={{ color: "rgba(245,230,200,0.38)" }}>
+                  <p
+                    style={{
+                      color: "rgba(204,204,204,0.45)",
+                      fontSize: "0.72rem",
+                      fontFamily: "Inter, sans-serif",
+                      fontWeight: 300,
+                      lineHeight: 1.5,
+                    }}
+                  >
                     {f.desc}
                   </p>
                 </div>
