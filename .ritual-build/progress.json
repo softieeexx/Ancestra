@@ -1,0 +1,33 @@
+{
+  "intent": "build",
+  "features": ["legend-select", "swap-interface", "legend-images"],
+  "current_phase": 2,
+  "phases": [
+    { "id": 0, "name": "intake", "status": "complete" },
+    { "id": 1, "name": "legend-cards-with-images", "status": "complete" },
+    { "id": 2, "name": "swap-selection-screen", "status": "complete" }
+  ],
+  "files_read": [
+    "skills/ritual/SKILL.md",
+    "frontend/app/page.tsx",
+    "frontend/components/LegendCard.tsx",
+    "frontend/app/swap/page.tsx",
+    "frontend/app/swap/[mode]/page.tsx",
+    "frontend/lib/constants.ts",
+    "frontend/components/SwapInterface.tsx",
+    "frontend/hooks/useAncestra.ts",
+    "frontend/components/dex/SwapWidget.tsx"
+  ],
+  "next_file": null,
+  "markers": {
+    "chain_connection": true,
+    "wallet_funded": false,
+    "contract_compiled": true,
+    "contract_deployed": true,
+    "precompile_simulated": false,
+    "precompile_settled": false,
+    "frontend_renders": false,
+    "frontend_connects": true,
+    "e2e_complete": false
+  }
+}

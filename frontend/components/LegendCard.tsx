@@ -1,94 +1,158 @@
 "use client";
 
-import { ModeId, POOLS } from "@/lib/constants";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { ModeId } from "@/lib/constants";
 
 interface LegendCardProps {
   mode: ModeId;
   index: number;
 }
 
-const legends = {
+const LEGENDS: Record<
+  ModeId,
+  {
+    title: string;
+    subtitle: string;
+    description: string;
+    color: string;
+    glow: string;
+    ring: string;
+    image: string;
+    dot: string;
+  }
+> = {
   amina: {
     title: "Amina",
     subtitle: "Stable Mode",
-    description: "The warrior queen who commanded stability. Swap RITUAL for stablecoins.",
+    description: "Swap RITUAL for stablecoins",
     color: "#4ADE80",
-    pattern: "◈",
-    gradient: "from-emerald-900/40 via-transparent to-emerald-950/20",
+    glow: "rgba(74,222,128,0.18)",
+    ring: "rgba(74,222,128,0.35)",
+    image: "/legends/amina.jpeg",
+    dot: "#4ADE80",
   },
   nefertiti: {
     title: "Nefertiti",
     subtitle: "Crypto Mode",
-    description: "The queen of influence. Swap RITUAL for major crypto assets.",
+    description: "Swap RITUAL for major crypto",
     color: "#FBBF24",
-    pattern: "◇",
-    gradient: "from-amber-900/40 via-transparent to-amber-950/20",
+    glow: "rgba(251,191,36,0.18)",
+    ring: "rgba(251,191,36,0.35)",
+    image: "/legends/nefertiti.jpeg",
+    dot: "#FBBF24",
   },
   yaa: {
     title: "Yaa Asantewa",
     subtitle: "Alt Mode",
-    description: "The fearless leader. Swap RITUAL for alternative tokens.",
+    description: "Swap RITUAL for alt tokens",
     color: "#F87171",
-    pattern: "◆",
-    gradient: "from-red-900/40 via-transparent to-red-950/20",
+    glow: "rgba(248,113,113,0.18)",
+    ring: "rgba(248,113,113,0.35)",
+    image: "/legends/yaa.jpeg",
+    dot: "#F87171",
   },
 };
 
 export default function LegendCard({ mode, index }: LegendCardProps) {
   const router = useRouter();
-  const legend = legends[mode];
+  const leg = LEGENDS[mode];
 
   return (
     <button
       onClick={() => router.push(`/swap/${mode}`)}
-      className={`
-        group relative w-full p-6 rounded-2xl text-left
-        bg-gradient-to-br ${legend.gradient}
-        border border-ritual/10 hover:border-ritual/30
-        transition-all duration-500 glow-card
-        animate-slide-up
-      `}
-      style={{ animationDelay: `${index * 150}ms` }}
+      className="group relative w-full text-left overflow-hidden rounded-2xl transition-all duration-300 focus:outline-none"
+      style={{
+        background: "rgba(13,10,3,0.8)",
+        border: `1px solid rgba(255,255,255,0.08)`,
+        boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+        animationDelay: `${index * 100}ms`,
+      }}
+      aria-label={`Enter ${leg.title} — ${leg.subtitle}`}
     >
-      {/* Decorative pattern */}
-      <div className="absolute top-3 right-4 text-4xl opacity-5 group-hover:opacity-10 transition-opacity select-none"
-        style={{ color: legend.color }}>
-        {legend.pattern}
-      </div>
+      {/* ── Image hero ──────────────────────────────────── */}
+      <div className="relative w-full" style={{ aspectRatio: "3/4" }}>
+        <Image
+          src={leg.image}
+          alt={leg.title}
+          fill
+          className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
+          priority={index === 0}
+          sizes="(max-width: 768px) 100vw, 33vw"
+        />
 
-      {/* Legend number */}
-      <div className="text-xs font-mono mb-3" style={{ color: legend.color }}>
-        0{index + 1}
-      </div>
+        {/* Dark bottom fade so text is readable */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(to top, rgba(13,10,3,0.97) 0%, rgba(13,10,3,0.55) 40%, rgba(13,10,3,0.0) 70%)",
+          }}
+        />
 
-      {/* Title */}
-      <h3 className="text-2xl font-display font-bold text-white mb-1">
-        {legend.title}
-      </h3>
+        {/* Colored glow at bottom */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          style={{
+            background: `radial-gradient(ellipse 80% 40% at 50% 100%, ${leg.glow} 0%, transparent 70%)`,
+          }}
+        />
 
-      {/* Subtitle badge */}
-      <div
-        className="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-3"
-        style={{
-          color: legend.color,
-          backgroundColor: `${legend.color}15`,
-          border: `1px solid ${legend.color}30`,
-        }}
-      >
-        {legend.subtitle}
-      </div>
+        {/* Colored ring on hover */}
+        <div
+          className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          style={{ boxShadow: `inset 0 0 0 1.5px ${leg.ring}` }}
+        />
 
-      {/* Description */}
-      <p className="text-sm text-earth-100/60 group-hover:text-earth-100/80 transition-colors">
-        {legend.description}
-      </p>
+        {/* ── Text overlay ──────────────────────────────── */}
+        <div className="absolute bottom-0 left-0 right-0 p-5">
+          {/* Mode badge */}
+          <div
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full mb-3"
+            style={{
+              background: `${leg.color}18`,
+              border: `1px solid ${leg.color}40`,
+            }}
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{ background: leg.dot }}
+            />
+            <span
+              className="text-xs font-rajdhani font-semibold tracking-widest uppercase"
+              style={{ color: leg.color, fontSize: "0.62rem", letterSpacing: "0.18em" }}
+            >
+              {leg.subtitle}
+            </span>
+          </div>
 
-      {/* Arrow */}
-      <div className="mt-4 flex items-center gap-2 text-sm opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-4px] group-hover:translate-x-0"
-        style={{ color: legend.color }}>
-        <span>Enter</span>
-        <span>→</span>
+          {/* Legend name */}
+          <h3
+            className="font-cinzel font-bold text-white mb-1 leading-tight"
+            style={{ fontSize: "clamp(1.25rem, 3vw, 1.6rem)" }}
+          >
+            {leg.title}
+          </h3>
+
+          {/* Descriptor */}
+          <p
+            className="text-xs leading-relaxed opacity-50 group-hover:opacity-80 transition-opacity"
+            style={{ fontFamily: "Inter, sans-serif", color: "#F5E6C8" }}
+          >
+            {leg.description}
+          </p>
+
+          {/* Enter arrow */}
+          <div
+            className="flex items-center gap-2 mt-3 text-xs font-semibold tracking-wider uppercase opacity-0 group-hover:opacity-100 transition-all duration-200 -translate-x-1 group-hover:translate-x-0"
+            style={{ color: leg.color, fontSize: "0.65rem", letterSpacing: "0.18em" }}
+          >
+            <span>Enter</span>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+        </div>
       </div>
     </button>
   );
