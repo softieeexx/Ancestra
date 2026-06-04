@@ -23,7 +23,7 @@ function DiamondIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
       <rect x="10" y="1.5" width="12" height="12" rx="1" transform="rotate(45 10 1.5)" stroke="#D4A853" strokeWidth="1.2" />
-      <rect x="10" y="5" width="6" height="6" rx="0.5" transform="rotate(45 10 5)" stroke="#D4A853" strokeWidth="0.8" />
+      <rect x="10" y="5"   width="6"  height="6"  rx="0.5" transform="rotate(45 10 5)"   stroke="#D4A853" strokeWidth="0.8" />
     </svg>
   );
 }
@@ -60,31 +60,44 @@ export default function HomePage() {
   const isMobile = useIsMobile();
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#0D0A03]">
+    <div className="relative w-full h-screen overflow-hidden" style={{ background: "#070508" }}>
 
-      {/* ── Animated village scene ───────────────────────── */}
-      <div className="absolute inset-0">
+      {/* ── Layer 1: Cinematic CSS background matching 2.jpeg ── */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `
+            radial-gradient(ellipse 45% 55% at 82% 42%, rgba(18, 72, 110, 0.32) 0%, transparent 70%),
+            radial-gradient(ellipse 55% 45% at 68% 30%, rgba(140, 72, 18, 0.48) 0%, transparent 65%),
+            radial-gradient(ellipse 35% 30% at 78% 20%, rgba(170, 88, 20, 0.38) 0%, transparent 55%),
+            radial-gradient(ellipse 70% 35% at 55% 60%, rgba(90, 45, 10, 0.55) 0%, transparent 65%),
+            radial-gradient(ellipse 90% 25% at 50% 98%, rgba(20, 10, 3, 0.9)   0%, transparent 80%),
+            linear-gradient(155deg, #04020A 0%, #08050A 20%, #0C0806 45%, #090604 70%, #060402 100%)
+          `,
+        }}
+      />
+
+      {/* ── Layer 2: Animated village canvas at very low opacity ── */}
+      <div className="absolute inset-0" style={{ opacity: 0.11, mixBlendMode: "screen" }}>
         <VillageCanvas dimmed={false} isMobile={isMobile} />
       </div>
 
-      {/* ── Left-side dark overlay (makes text readable) ── */}
+      {/* ── Layer 3: Left-side readability gradient ── */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "linear-gradient(100deg, rgba(4,3,2,0.96) 0%, rgba(4,3,2,0.92) 25%, rgba(4,3,2,0.70) 45%, rgba(4,3,2,0.25) 65%, transparent 85%)",
+            "linear-gradient(100deg, rgba(4,2,8,0.88) 0%, rgba(4,2,8,0.80) 28%, rgba(4,2,8,0.50) 48%, rgba(4,2,8,0.12) 68%, transparent 85%)",
         }}
       />
 
-      {/* ── Top vignette ──────────────────────────────────── */}
+      {/* ── Layer 4: Top vignette ── */}
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{
-          background: "linear-gradient(180deg, rgba(4,3,2,0.55) 0%, transparent 25%)",
-        }}
+        style={{ background: "linear-gradient(180deg, rgba(4,2,8,0.6) 0%, transparent 22%)" }}
       />
 
-      {/* ── UI layer ──────────────────────────────────────── */}
+      {/* ── Layer 5: UI ─────────────────────────────────── */}
       <div className="relative z-10 flex flex-col h-full">
 
         {/* Navbar */}
@@ -116,23 +129,20 @@ export default function HomePage() {
           </Link>
         </nav>
 
-        {/* Hero content */}
+        {/* Hero */}
         <main className="flex-1 flex items-center px-8 md:px-14 lg:px-20 pb-8">
           <div style={{ maxWidth: "520px" }}>
-
-            {/* Title */}
             <h1
               className="font-cinzel font-black text-white leading-[0.88] mb-7 select-none"
               style={{
                 fontSize: "clamp(4.5rem, 12vw, 9.5rem)",
-                textShadow: "0 0 80px rgba(212,168,83,0.15), 0 2px 60px rgba(0,0,0,0.9)",
+                textShadow: "0 0 80px rgba(212,168,83,0.12), 0 2px 60px rgba(0,0,0,0.9)",
                 letterSpacing: "-0.01em",
               }}
             >
               ANCESTRA
             </h1>
 
-            {/* Subtitle */}
             <p
               className="font-cinzel text-xs mb-5"
               style={{ color: "#C4953E", letterSpacing: "0.42em" }}
@@ -140,7 +150,6 @@ export default function HomePage() {
               ANCESTRAL.&nbsp;&nbsp;RITUAL-CENTRIC.
             </p>
 
-            {/* Body */}
             <p
               className="text-base leading-relaxed mb-9"
               style={{ color: "rgba(245,230,200,0.6)", maxWidth: "360px" }}
@@ -148,10 +157,8 @@ export default function HomePage() {
               Trade RITUAL against the world through ancestral liquidity.
             </p>
 
-            {/* CTA */}
             <ConnectButton />
 
-            {/* Testnet badge */}
             <div className="flex items-center gap-2.5 mt-6">
               <span
                 className="w-2 h-2 rounded-full flex-shrink-0"
@@ -173,12 +180,12 @@ export default function HomePage() {
             className="w-full h-px"
             style={{
               background:
-                "linear-gradient(90deg, rgba(212,168,83,0.5) 0%, rgba(212,168,83,0.3) 60%, transparent 100%)",
+                "linear-gradient(90deg, rgba(212,168,83,0.55) 0%, rgba(212,168,83,0.35) 55%, transparent 100%)",
             }}
           />
           <div
             className="grid grid-cols-3"
-            style={{ background: "rgba(4,3,2,0.88)", backdropFilter: "blur(16px)" }}
+            style={{ background: "rgba(4,2,8,0.90)", backdropFilter: "blur(16px)" }}
           >
             {FEATURES.map((f, i) => (
               <div
@@ -186,9 +193,7 @@ export default function HomePage() {
                 className="flex items-start gap-4 px-7 py-6"
                 style={{ borderRight: i < 2 ? "1px solid rgba(212,168,83,0.1)" : "none" }}
               >
-                <div className="flex-shrink-0 mt-0.5">
-                  <DiamondIcon />
-                </div>
+                <div className="flex-shrink-0 mt-0.5"><DiamondIcon /></div>
                 <div>
                   <p
                     className="font-cinzel text-xs font-semibold mb-1.5"
