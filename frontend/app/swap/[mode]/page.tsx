@@ -1,10 +1,13 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+import { useCallback, useRef } from "react";
 import { POOLS, ModeId } from "@/lib/constants";
 import { useAccount } from "wagmi";
 import WalletConnect from "@/components/WalletConnect";
 import SwapInterface from "@/components/SwapInterface";
+import AchievementPanel from "@/components/AchievementPanel";
+import { useSwapCount } from "@/hooks/useSwapCount";
 import { useEffect } from "react";
 
 export default function SwapPage() {
@@ -12,8 +15,8 @@ export default function SwapPage() {
   const router = useRouter();
   const { isConnected } = useAccount();
   const mode = params.mode as ModeId;
-
   const pool = POOLS[mode];
+  const { refresh: refreshSwapCount } = useSwapCount();
 
   // Redirect to home if invalid mode
   useEffect(() => {
@@ -62,9 +65,16 @@ export default function SwapPage() {
         </p>
       </div>
 
-      {/* Swap interface */}
+      {/* Main area: swap + achievements side by side on desktop */}
       {isConnected ? (
-        <SwapInterface mode={mode} />
+        <div className="flex flex-col md:flex-row gap-6 items-start justify-center">
+          <div className="w-full md:w-auto flex-shrink-0">
+            <SwapInterface mode={mode} onSwapSuccess={refreshSwapCount} />
+          </div>
+          <div className="w-full md:w-72 flex-shrink-0">
+            <AchievementPanel compact />
+          </div>
+        </div>
       ) : (
         <div className="flex flex-col items-center gap-4 mt-12">
           <p className="text-earth-100/50 text-sm">Connect your wallet to swap</p>

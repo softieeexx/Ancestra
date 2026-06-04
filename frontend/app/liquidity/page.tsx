@@ -1,0 +1,359 @@
+"use client";
+
+import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useAccount, useReadContract } from "wagmi";
+import { formatUnits, parseUnits, Address } from "viem";
+import WalletConnect from "@/components/WalletConnect";
+import TokenSelector from "@/components/dex/TokenSelector";
+import TxStatus from "@/components/dex/TxStatus";
+import { TOKENS, Token, CONTRACTS, POOLS } from "@/lib/constants";
+import { FACTORY_ABI, PAIR_ABI, ERC20_ABI, ROUTER_ABI } from "@/lib/abi";
+import { useAddLiquidity, useRemoveLiquidity } from "@/hooks/useRouter";
+
+type Tab = "add" | "remove";
+
+function NavBar() {
+  const router = useRouter();
+  return (
+    <div className="flex items-center justify-between mb-6">
+      <button onClick={() => router.push("/")} className="flex items-center gap-2 text-earth-100/50 hover:text-ritual transition-colors text-sm">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        Home
+      </button>
+      <nav className="flex items-center gap-4 text-sm">
+        <a href="/swap" className="text-earth-100/50 hover:text-white transition-colors">Swap</a>
+        <a href="/liquidity" className="text-ritual font-semibold">Liquidity</a>
+        <a href="/pools" className="text-earth-100/50 hover:text-white transition-colors">Pools</a>
+        <a href="/portfolio" className="text-earth-100/50 hover:text-white transition-colors">Portfolio</a>
+      </nav>
+      <WalletConnect />
+    </div>
+  );
+}
+
+export default function LiquidityPage() {
+  const { isConnected, address } = useAccount();
+  const [tab, setTab] = useState<Tab>("add");
+
+  return (
+    <div className="flex-1 flex flex-col px-4 py-6">
+      <NavBar />
+
+      <div className="max-w-[500px] mx-auto w-full">
+        <div className="flex rounded-xl overflow-hidden mb-6" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+          {(["add", "remove"] as Tab[]).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className="flex-1 py-3 text-sm font-semibold transition-all capitalize"
+              style={
+                tab === t
+                  ? { background: "rgba(212,168,83,0.15)", color: "#D4A853" }
+                  : { background: "rgba(255,255,255,0.02)", color: "rgba(255,255,255,0.4)" }
+              }
+            >
+              {t === "add" ? "Add Liquidity" : "Remove Liquidity"}
+            </button>
+          ))}
+        </div>
+
+        {!isConnected ? (
+          <div className="flex flex-col items-center gap-4 mt-12">
+            <p className="text-earth-100/50 text-sm">Connect your wallet to manage liquidity</p>
+            <WalletConnect />
+          </div>
+        ) : tab === "add" ? (
+          <AddLiquidity address={address!} />
+        ) : (
+          <RemoveLiquidity address={address!} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AddLiquidity({ address }: { address: Address }) {
+  const [tokenA, setTokenA] = useState<Token>(TOKENS[1]); // WRITUAL
+  const [tokenB, setTokenB] = useState<Token>(TOKENS[2]); // USDC
+  const [amountA, setAmountA] = useState("");
+  const [amountB, setAmountB] = useState("");
+
+  const { txState, txHash, error, addLiquidity, reset } = useAddLiquidity();
+
+  // Get quote from router when A changes
+  const addrA = tokenA.isNative ? CONTRACTS.WRITUAL : tokenA.address;
+  const addrB = tokenB.isNative ? CONTRACTS.WRITUAL : tokenB.address;
+
+  // Read pair to get current reserves for price quote
+  const { data: pairAddr } = useReadContract({
+    address: CONTRACTS.FACTORY,
+    abi: FACTORY_ABI,
+    functionName: "getPair",
+    args: [addrA, addrB],
+  });
+
+  const { data: reserves } = useReadContract({
+    address: pairAddr as Address | undefined,
+    abi: PAIR_ABI,
+    functionName: "getReserves",
+    query: { enabled: !!pairAddr && pairAddr !== "0x0000000000000000000000000000000000000000" },
+  });
+
+  const handleAmountAChange = useCallback((val: string) => {
+    if (!/^\d*\.?\d*$/.test(val)) return;
+    setAmountA(val);
+    // Auto-quote B from reserves
+    if (reserves && val && parseFloat(val) > 0) {
+      const [r0, r1] = reserves as [bigint, bigint, number];
+      const inAmt = parseUnits(val, tokenA.decimals);
+      // quote: amountB = amountA * reserveB / reserveA
+      if (r0 > 0n && r1 > 0n) {
+        const quoted = (inAmt * r1) / r0;
+        setAmountB(parseFloat(formatUnits(quoted, tokenB.decimals)).toFixed(6));
+      }
+    }
+  }, [reserves, tokenA.decimals, tokenB.decimals]);
+
+  const isBusy = txState === "approving" || txState === "adding";
+  const hasAmounts = !!amountA && !!amountB && parseFloat(amountA) > 0 && parseFloat(amountB) > 0;
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{ background: "rgba(13,10,3,0.7)", backdropFilter: "blur(24px)", border: "1px solid rgba(212,168,83,0.12)" }}
+    >
+      <div className="p-5">
+        <h2 className="text-base font-semibold text-white mb-5">Add Liquidity</h2>
+
+        <div className="space-y-3">
+          {/* Token A */}
+          <div
+            className="rounded-xl p-4"
+            style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-earth-100/35">Token A</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={amountA}
+                onChange={e => handleAmountAChange(e.target.value)}
+                className="flex-1 bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-white/15"
+              />
+              <TokenSelector selected={tokenA} exclude={tokenB.address} onSelect={t => { setTokenA(t); setAmountA(""); setAmountB(""); }} />
+            </div>
+          </div>
+
+          <div className="flex justify-center text-earth-100/30 text-sm">+</div>
+
+          {/* Token B */}
+          <div
+            className="rounded-xl p-4"
+            style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-earth-100/35">Token B</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={amountB}
+                onChange={e => { if (/^\d*\.?\d*$/.test(e.target.value)) setAmountB(e.target.value); }}
+                className="flex-1 bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-white/15"
+              />
+              <TokenSelector selected={tokenB} exclude={tokenA.address} onSelect={t => { setTokenB(t); setAmountA(""); setAmountB(""); }} />
+            </div>
+          </div>
+
+          {/* Pool exists indicator */}
+          {pairAddr && pairAddr !== "0x0000000000000000000000000000000000000000" ? (
+            <div className="text-xs text-earth-100/40 text-center">
+              Pool exists · {pairAddr.slice(0, 10)}…{pairAddr.slice(-6)}
+            </div>
+          ) : (
+            <div className="text-xs text-ritual/60 text-center">New pool will be created</div>
+          )}
+
+          <button
+            onClick={() => addLiquidity(tokenA, tokenB, amountA, amountB)}
+            disabled={!hasAmounts || isBusy}
+            className="w-full py-4 rounded-xl font-semibold text-sm tracking-wide transition-all"
+            style={
+              !hasAmounts || isBusy
+                ? { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.06)" }
+                : { background: "linear-gradient(135deg, #D4A853 0%, #F0C060 50%, #C8902A 100%)", color: "#0D0A03" }
+            }
+          >
+            {txState === "approving" ? "Approving…" : isBusy ? "Adding liquidity…" : "Add Liquidity"}
+          </button>
+        </div>
+      </div>
+
+      {txState !== "idle" && (
+        <div className="px-5 pb-5">
+          <TxStatus txState={txState} txHash={txHash} error={error} onReset={reset} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RemoveLiquidity({ address }: { address: Address }) {
+  const { txState, txHash, error, removeLiquidity, reset } = useRemoveLiquidity();
+  const [selectedPool, setSelectedPool] = useState<keyof typeof POOLS>("amina");
+  const [lpAmount, setLpAmount] = useState("");
+
+  const pool = POOLS[selectedPool];
+
+  const { data: lpBalance } = useReadContract({
+    address: pool.pairAddress,
+    abi: PAIR_ABI,
+    functionName: "balanceOf",
+    args: [address],
+  });
+
+  const { data: totalSupply } = useReadContract({
+    address: pool.pairAddress,
+    abi: PAIR_ABI,
+    functionName: "totalSupply",
+  });
+
+  const { data: reserves } = useReadContract({
+    address: pool.pairAddress,
+    abi: PAIR_ABI,
+    functionName: "getReserves",
+  });
+
+  const lpBal = lpBalance as bigint | undefined;
+  const lpSupply = totalSupply as bigint | undefined;
+  const res = reserves as [bigint, bigint, number] | undefined;
+
+  const lpShare = lpBal && lpSupply && lpSupply > 0n
+    ? Number((lpBal * 10000n) / lpSupply) / 100
+    : 0;
+
+  // Expected amounts on removal
+  const lpAmtBig = lpAmount ? (() => { try { return parseUnits(lpAmount, 18); } catch { return 0n; } })() : 0n;
+  const expectedA = res && lpSupply && lpSupply > 0n && lpAmtBig > 0n
+    ? (lpAmtBig * res[0]) / lpSupply
+    : 0n;
+  const expectedB = res && lpSupply && lpSupply > 0n && lpAmtBig > 0n
+    ? (lpAmtBig * res[1]) / lpSupply
+    : 0n;
+
+  const handleMax = () => {
+    if (lpBal) setLpAmount(formatUnits(lpBal, 18));
+  };
+
+  const isBusy = txState === "approving" || txState === "removing";
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{ background: "rgba(13,10,3,0.7)", backdropFilter: "blur(24px)", border: "1px solid rgba(212,168,83,0.12)" }}
+    >
+      <div className="p-5">
+        <h2 className="text-base font-semibold text-white mb-5">Remove Liquidity</h2>
+
+        {/* Pool selector */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {(Object.keys(POOLS) as Array<keyof typeof POOLS>).map(k => {
+            const p = POOLS[k];
+            return (
+              <button
+                key={k}
+                onClick={() => { setSelectedPool(k); setLpAmount(""); }}
+                className="py-2 px-3 rounded-xl text-xs font-semibold transition-all"
+                style={
+                  selectedPool === k
+                    ? { background: `${p.color}20`, color: p.color, border: `1px solid ${p.color}40` }
+                    : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.06)" }
+                }
+              >
+                {p.token0.symbol}/{p.token1.symbol}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* LP balance + share */}
+        <div
+          className="rounded-xl p-3 mb-4 space-y-1.5"
+          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+        >
+          <div className="flex justify-between text-xs">
+            <span className="text-earth-100/40">Your LP Balance</span>
+            <span className="text-white/70">{lpBal ? parseFloat(formatUnits(lpBal, 18)).toFixed(6) : "0"} AMLP</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-earth-100/40">Pool Share</span>
+            <span className="text-ritual">{lpShare.toFixed(4)}%</span>
+          </div>
+        </div>
+
+        {/* LP amount input */}
+        <div
+          className="rounded-xl p-4 mb-4"
+          style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div className="flex justify-between mb-2">
+            <span className="text-xs text-earth-100/35">LP Amount to Remove</span>
+            <button onClick={handleMax} className="text-xs" style={{ color: "#D4A853" }}>MAX</button>
+          </div>
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder="0.00"
+            value={lpAmount}
+            onChange={e => { if (/^\d*\.?\d*$/.test(e.target.value)) setLpAmount(e.target.value); }}
+            className="w-full bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-white/15"
+          />
+        </div>
+
+        {/* Expected output */}
+        {lpAmtBig > 0n && (
+          <div
+            className="rounded-xl p-3 mb-4 space-y-1.5"
+            style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}
+          >
+            <div className="flex justify-between text-xs">
+              <span className="text-earth-100/40">You receive {pool.token0.symbol}</span>
+              <span className="text-white/70">{parseFloat(formatUnits(expectedA, pool.token0.decimals)).toFixed(6)}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-earth-100/40">You receive {pool.token1.symbol}</span>
+              <span className="text-white/70">{parseFloat(formatUnits(expectedB, pool.token1.decimals)).toFixed(6)}</span>
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={() => removeLiquidity(pool.pairAddress, pool.token0, pool.token1, lpAmount)}
+          disabled={!lpAmount || parseFloat(lpAmount) <= 0 || isBusy}
+          className="w-full py-4 rounded-xl font-semibold text-sm tracking-wide transition-all"
+          style={
+            !lpAmount || isBusy
+              ? { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.06)" }
+              : { background: "rgba(248,113,113,0.15)", color: "#F87171", border: "1px solid rgba(248,113,113,0.3)" }
+          }
+        >
+          {isBusy ? "Removing…" : "Remove Liquidity"}
+        </button>
+      </div>
+
+      {txState !== "idle" && (
+        <div className="px-5 pb-5">
+          <TxStatus txState={txState} txHash={txHash} error={error} onReset={reset} />
+        </div>
+      )}
+    </div>
+  );
+}
