@@ -1,23 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ConnectKitButton } from "connectkit";
 import { useRouter } from "next/navigation";
-import VillageCanvas from "@/components/VillageScene/VillageCanvas";
-
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-  return isMobile;
-}
 
 function DiamondIcon() {
   return (
@@ -39,7 +25,7 @@ function ConnectButton() {
           style={{
             border: "1px solid #D4A853",
             color: "#D4A853",
-            background: "rgba(0,0,0,0.25)",
+            background: "rgba(0,0,0,0.2)",
             letterSpacing: "0.3em",
           }}
         >
@@ -57,48 +43,40 @@ const FEATURES = [
 ];
 
 export default function HomePage() {
-  const isMobile = useIsMobile();
-
   return (
-    <div className="relative w-full h-screen overflow-hidden" style={{ background: "#070508" }}>
+    <div className="relative w-full h-screen overflow-hidden bg-[#07050A]">
 
-      {/* ── Layer 1: Cinematic CSS background matching 2.jpeg ── */}
+      {/* ── Background image ── */}
+      <Image
+        src="/hero-bg.jpeg"
+        alt=""
+        fill
+        priority
+        className="object-cover object-center"
+        style={{ zIndex: 0 }}
+      />
+
+      {/* ── Left-to-right dark gradient so text stays readable ── */}
       <div
         className="absolute inset-0"
         style={{
-          background: `
-            radial-gradient(ellipse 45% 55% at 82% 42%, rgba(18, 72, 110, 0.32) 0%, transparent 70%),
-            radial-gradient(ellipse 55% 45% at 68% 30%, rgba(140, 72, 18, 0.48) 0%, transparent 65%),
-            radial-gradient(ellipse 35% 30% at 78% 20%, rgba(170, 88, 20, 0.38) 0%, transparent 55%),
-            radial-gradient(ellipse 70% 35% at 55% 60%, rgba(90, 45, 10, 0.55) 0%, transparent 65%),
-            radial-gradient(ellipse 90% 25% at 50% 98%, rgba(20, 10, 3, 0.9)   0%, transparent 80%),
-            linear-gradient(155deg, #04020A 0%, #08050A 20%, #0C0806 45%, #090604 70%, #060402 100%)
-          `,
-        }}
-      />
-
-      {/* ── Layer 2: Animated village canvas at very low opacity ── */}
-      <div className="absolute inset-0" style={{ opacity: 0.11, mixBlendMode: "screen" }}>
-        <VillageCanvas dimmed={false} isMobile={isMobile} />
-      </div>
-
-      {/* ── Layer 3: Left-side readability gradient ── */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
+          zIndex: 1,
           background:
-            "linear-gradient(100deg, rgba(4,2,8,0.88) 0%, rgba(4,2,8,0.80) 28%, rgba(4,2,8,0.50) 48%, rgba(4,2,8,0.12) 68%, transparent 85%)",
+            "linear-gradient(100deg, rgba(5,3,9,0.92) 0%, rgba(5,3,9,0.85) 28%, rgba(5,3,9,0.55) 50%, rgba(5,3,9,0.15) 70%, transparent 88%)",
         }}
       />
 
-      {/* ── Layer 4: Top vignette ── */}
+      {/* ── Top vignette ── */}
       <div
-        className="absolute inset-0 pointer-events-none"
-        style={{ background: "linear-gradient(180deg, rgba(4,2,8,0.6) 0%, transparent 22%)" }}
+        className="absolute inset-0"
+        style={{
+          zIndex: 1,
+          background: "linear-gradient(180deg, rgba(5,3,9,0.55) 0%, transparent 20%)",
+        }}
       />
 
-      {/* ── Layer 5: UI ─────────────────────────────────── */}
-      <div className="relative z-10 flex flex-col h-full">
+      {/* ── UI ── */}
+      <div className="relative flex flex-col h-full" style={{ zIndex: 2 }}>
 
         {/* Navbar */}
         <nav className="flex items-center justify-between px-8 py-5 flex-shrink-0">
@@ -136,7 +114,7 @@ export default function HomePage() {
               className="font-cinzel font-black text-white leading-[0.88] mb-7 select-none"
               style={{
                 fontSize: "clamp(4.5rem, 12vw, 9.5rem)",
-                textShadow: "0 0 80px rgba(212,168,83,0.12), 0 2px 60px rgba(0,0,0,0.9)",
+                textShadow: "0 2px 60px rgba(0,0,0,0.9)",
                 letterSpacing: "-0.01em",
               }}
             >
@@ -152,7 +130,7 @@ export default function HomePage() {
 
             <p
               className="text-base leading-relaxed mb-9"
-              style={{ color: "rgba(245,230,200,0.6)", maxWidth: "360px" }}
+              style={{ color: "rgba(245,230,200,0.65)", maxWidth: "360px" }}
             >
               Trade RITUAL against the world through ancestral liquidity.
             </p>
@@ -180,12 +158,12 @@ export default function HomePage() {
             className="w-full h-px"
             style={{
               background:
-                "linear-gradient(90deg, rgba(212,168,83,0.55) 0%, rgba(212,168,83,0.35) 55%, transparent 100%)",
+                "linear-gradient(90deg, rgba(212,168,83,0.55) 0%, rgba(212,168,83,0.3) 55%, transparent 100%)",
             }}
           />
           <div
             className="grid grid-cols-3"
-            style={{ background: "rgba(4,2,8,0.90)", backdropFilter: "blur(16px)" }}
+            style={{ background: "rgba(5,3,9,0.88)", backdropFilter: "blur(16px)" }}
           >
             {FEATURES.map((f, i) => (
               <div
