@@ -8,10 +8,10 @@ import { useAccount, useSwitchChain } from "wagmi";
 import { RITUAL_CHAIN_ID } from "@/lib/constants";
 
 const TABS = [
-  { label: "Swap",      href: "/swap" },
-  { label: "Liquidity", href: "/liquidity" },
-  { label: "Pools",     href: "/pools" },
-  { label: "Portfolio", href: "/portfolio" },
+  { label: "Swap",      short: "SWAP", href: "/swap" },
+  { label: "Liquidity", short: "LIQ",  href: "/liquidity" },
+  { label: "Pools",     short: "POOL", href: "/pools" },
+  { label: "Portfolio", short: "PORT", href: "/portfolio" },
 ] as const;
 
 export default function AppNav() {
@@ -48,13 +48,13 @@ export default function AppNav() {
       </div>
     )}
     <nav
-      className="flex items-center justify-between px-5 md:px-8 py-4 flex-shrink-0"
+      className="flex items-center justify-between px-3 sm:px-5 md:px-8 py-3 sm:py-4 flex-shrink-0"
       style={{ borderBottom: "1px solid rgba(201,168,76,0.10)" }}
     >
       {/* ── Logo ──────────────────────────────────────── */}
-      <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity flex-shrink-0">
+      <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0">
         <div
-          className="w-7 h-7 rounded-md overflow-hidden relative flex-shrink-0"
+          className="w-6 h-6 sm:w-7 sm:h-7 rounded-md overflow-hidden relative flex-shrink-0"
           style={{ background: "#1a6b3a" }}
         >
           <Image src="/logo.jpeg" alt="Ancestra" fill className="object-cover" />
@@ -68,22 +68,24 @@ export default function AppNav() {
       </Link>
 
       {/* ── Tabs ──────────────────────────────────────── */}
-      <div className="flex items-center gap-1">
-        {TABS.map(({ label, href }) => {
+      <div className="flex items-center gap-0.5 sm:gap-1">
+        {TABS.map(({ label, short, href }) => {
           const active = isActive(href);
           return (
             <Link
               key={href}
               href={href}
-              className="px-3 py-1.5 rounded-lg text-xs font-rajdhani font-semibold transition-all"
+              className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg font-rajdhani font-semibold transition-all"
               style={{
-                letterSpacing: "0.12em",
+                fontSize: "clamp(0.6rem, 2vw, 0.75rem)",
+                letterSpacing: "0.10em",
                 color: active ? "#D4A853" : "rgba(255,255,255,0.38)",
                 background: active ? "rgba(212,168,83,0.10)" : "transparent",
                 border: active ? "1px solid rgba(212,168,83,0.22)" : "1px solid transparent",
               }}
             >
-              {label.toUpperCase()}
+              <span className="sm:hidden">{short}</span>
+              <span className="hidden sm:inline">{label.toUpperCase()}</span>
             </Link>
           );
         })}
@@ -94,8 +96,9 @@ export default function AppNav() {
         {({ isConnected, show, address }) => (
           <button
             onClick={show}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-xs transition-all hover:opacity-80 flex-shrink-0"
+            className="flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full font-mono transition-all hover:opacity-80 flex-shrink-0"
             style={{
+              fontSize: "clamp(0.6rem, 2vw, 0.75rem)",
               background: isConnected ? "rgba(212,168,83,0.07)" : "rgba(212,168,83,0.14)",
               border: "1px solid rgba(212,168,83,0.22)",
               color: isConnected ? "rgba(212,168,83,0.85)" : "#D4A853",
@@ -108,9 +111,14 @@ export default function AppNav() {
                 boxShadow: isConnected ? "0 0 5px #3ddc84" : "none",
               }}
             />
-            {isConnected && address
-              ? `${address.slice(0, 6)}…${address.slice(-4)}`
-              : "Connect"}
+            <span className="hidden sm:inline">
+              {isConnected && address
+                ? `${address.slice(0, 6)}…${address.slice(-4)}`
+                : "Connect"}
+            </span>
+            <span className="sm:hidden">
+              {isConnected && address ? `${address.slice(0, 4)}…` : "Wallet"}
+            </span>
           </button>
         )}
       </ConnectKitButton.Custom>

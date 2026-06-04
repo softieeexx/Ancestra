@@ -8,6 +8,7 @@ import WalletConnect from "@/components/WalletConnect";
 import TokenSelector from "@/components/dex/TokenSelector";
 import TxStatus from "@/components/dex/TxStatus";
 import { TOKENS, Token, CONTRACTS, POOLS, RITUAL_CHAIN_ID } from "@/lib/constants";
+import DappFrame from "@/components/DappFrame";
 import { FACTORY_ABI, PAIR_ABI, ERC20_ABI, ROUTER_ABI, MOCK_ERC20_ABI } from "@/lib/abi";
 import { useAddLiquidity, useRemoveLiquidity } from "@/hooks/useRouter";
 
@@ -18,14 +19,14 @@ export default function LiquidityPage() {
   const [tab, setTab] = useState<Tab>("add");
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#0a0803" }}>
-      <div className="pointer-events-none fixed inset-0" style={{ background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(212,168,83,0.05) 0%, transparent 65%)", zIndex: 0 }} />
+    <DappFrame>
+      <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(212,168,83,0.05) 0%, transparent 65%)", zIndex: 0 }} />
 
       <div className="relative z-10">
         <AppNav />
       </div>
 
-      <div className="relative z-10 flex-1 flex flex-col px-4 py-8">
+      <div className="relative z-10 flex-1 flex flex-col px-4 py-6 sm:py-8">
         <div className="max-w-[500px] mx-auto w-full">
           <h1 className="font-cinzel font-bold text-white mb-6" style={{ fontSize: "1.5rem" }}>Liquidity</h1>
 
@@ -61,7 +62,7 @@ export default function LiquidityPage() {
           )}
         </div>
       </div>
-    </div>
+    </DappFrame>
   );
 }
 

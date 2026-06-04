@@ -3,6 +3,7 @@
 import { useReadContract } from "wagmi";
 import { formatUnits } from "viem";
 import AppNav from "@/components/AppNav";
+import DappFrame from "@/components/DappFrame";
 import { CONTRACTS, POOLS } from "@/lib/constants";
 import { FACTORY_ABI, PAIR_ABI } from "@/lib/abi";
 
@@ -92,14 +93,14 @@ export default function PoolsPage() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#0a0803" }}>
-      <div className="pointer-events-none fixed inset-0" style={{ background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(212,168,83,0.05) 0%, transparent 65%)", zIndex: 0 }} />
+    <DappFrame>
+      <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(212,168,83,0.05) 0%, transparent 65%)", zIndex: 0 }} />
 
       <div className="relative z-10">
         <AppNav />
       </div>
 
-      <div className="relative z-10 flex-1 px-4 py-8">
+      <div className="relative z-10 flex-1 px-4 py-6 sm:py-8">
         <div className="max-w-3xl mx-auto w-full">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -143,6 +144,6 @@ export default function PoolsPage() {
           </div>
         </div>
       </div>
-    </div>
+    </DappFrame>
   );
 }

@@ -6,6 +6,7 @@ import { POOLS, ModeId } from "@/lib/constants";
 import { useAccount } from "wagmi";
 import SwapInterface from "@/components/SwapInterface";
 import AppNav from "@/components/AppNav";
+import DappFrame from "@/components/DappFrame";
 
 export default function ModePage() {
   const params = useParams();
@@ -22,10 +23,10 @@ export default function ModePage() {
   const accent = pool.color;
 
   return (
-    <div className="relative min-h-screen flex flex-col" style={{ background: "#0a0803" }}>
+    <DappFrame>
       {/* Mode ambient glow */}
       <div
-        className="pointer-events-none fixed inset-0"
+        className="pointer-events-none absolute inset-0"
         style={{
           background: `radial-gradient(ellipse 60% 40% at 50% 0%, ${accent}0a 0%, transparent 65%)`,
           zIndex: 0,
@@ -38,7 +39,7 @@ export default function ModePage() {
       </div>
 
       {/* ── Mode badge ──────────────────────────────────── */}
-      <div className="relative z-10 flex justify-center pt-6 pb-2">
+      <div className="relative z-10 flex justify-center pt-4 sm:pt-6 pb-2">
         <div
           className="flex items-center gap-2 px-4 py-1.5 rounded-full"
           style={{ background: `${accent}12`, border: `1px solid ${accent}30` }}
@@ -54,16 +55,16 @@ export default function ModePage() {
       </div>
 
       {/* ── Swap widget ─────────────────────────────────── */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-6">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-4 sm:py-6">
         <SwapInterface mode={mode} />
       </main>
 
       <footer
-        className="relative z-10 text-center pb-6"
+        className="relative z-10 text-center pb-4 sm:pb-6"
         style={{ color: "rgba(255,255,255,0.12)", fontSize: "0.65rem", letterSpacing: "0.2em", fontFamily: "Rajdhani, sans-serif" }}
       >
         RITUAL TESTNET · ANCESTRA DEX
       </footer>
-    </div>
+    </DappFrame>
   );
 }

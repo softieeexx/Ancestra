@@ -3,6 +3,7 @@
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import { formatUnits, Address } from "viem";
 import AppNav from "@/components/AppNav";
+import DappFrame from "@/components/DappFrame";
 import WalletConnect from "@/components/WalletConnect";
 import { CONTRACTS, POOLS, TOKENS } from "@/lib/constants";
 import { PAIR_ABI, ERC20_ABI } from "@/lib/abi";
@@ -102,14 +103,14 @@ export default function PortfolioPage() {
   const { isConnected, address } = useAccount();
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#0a0803" }}>
-      <div className="pointer-events-none fixed inset-0" style={{ background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(212,168,83,0.05) 0%, transparent 65%)", zIndex: 0 }} />
+    <DappFrame>
+      <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(212,168,83,0.05) 0%, transparent 65%)", zIndex: 0 }} />
 
       <div className="relative z-10">
         <AppNav />
       </div>
 
-      <div className="relative z-10 flex-1 px-4 py-8">
+      <div className="relative z-10 flex-1 px-4 py-6 sm:py-8">
         <div className="max-w-2xl mx-auto w-full">
           <h1 className="font-cinzel font-bold text-white mb-6" style={{ fontSize: "1.5rem" }}>Portfolio</h1>
 
@@ -154,6 +155,6 @@ export default function PortfolioPage() {
           )}
         </div>
       </div>
-    </div>
+    </DappFrame>
   );
 }
