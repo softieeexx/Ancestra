@@ -34,6 +34,7 @@ const config: Config = {
       fontFamily: {
         display: ["Cinzel", "Georgia", "serif"],
         cinzel: ["Cinzel", "serif"],
+        cormorant: ["Cormorant Garamond", "Georgia", "serif"],
         rajdhani: ["Rajdhani", "sans-serif"],
         body: ["Inter", "system-ui", "sans-serif"],
       },
