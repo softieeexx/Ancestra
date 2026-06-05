@@ -62,40 +62,39 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
     amountIn, setAmountIn,
     isFlipped, flip,
     tokenIn, tokenOut,
-    selectedStable, changeStable,
-    aminaStables,
+    selectedToken, changeToken,
+    modeTokens,
     estimatedOut, fee,
     txState, txHash, error,
     swap, reset,
-    reserve0, reserve1,
     hasLiquidity,
   } = useAncestra(mode, onSwapSuccess);
 
   const [arrowSpin, setArrowSpin] = useState(false);
 
-  // Native RITUAL balance
   const { data: ritualBalance } = useBalance({ address, chainId: ritualChain.id });
 
-  // ERC20 balance for the selected stable (needed when tokenIn = stable)
-  const { data: stableBal } = useReadContract({
-    address: selectedStable.address,
+  const { data: tokenBal } = useReadContract({
+    address: selectedToken.address,
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: { enabled: !!address },
+    query: { enabled: !!address && !selectedToken.isNative },
   });
 
   if (!isConnected) return null;
 
-  // Balance display for the "You Pay" side
   const balanceDisplay = tokenIn.isNative
     ? (ritualBalance ? parseFloat(formatEther(ritualBalance.value)).toFixed(4) : "—")
-    : (stableBal ? parseFloat(formatUnits(stableBal as bigint, tokenIn.decimals)).toFixed(4) : "—");
+    : (tokenBal ? parseFloat(formatUnits(tokenBal as bigint, tokenIn.decimals)).toFixed(4) : "—");
 
   const outDisplay = estimatedOut();
   const hasAmount  = !!amountIn && amountIn !== "0";
   const isBusy     = txState === "swapping" || txState === "approving";
   const accent     = pool.color;
+
+  // Precision for output display
+  const outPrecision = tokenOut.decimals <= 6 ? 4 : tokenOut.decimals === 9 ? 6 : 6;
 
   const handleArrow = useCallback(() => {
     setArrowSpin(true);
@@ -107,10 +106,58 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
     if (tokenIn.isNative && ritualBalance) {
       const max = parseFloat(formatEther(ritualBalance.value)) - 0.01;
       if (max > 0) setAmountIn(max.toFixed(6));
-    } else if (stableBal) {
-      setAmountIn(formatUnits(stableBal as bigint, tokenIn.decimals));
+    } else if (tokenBal) {
+      setAmountIn(formatUnits(tokenBal as bigint, tokenIn.decimals));
     }
-  }, [tokenIn, ritualBalance, stableBal, setAmountIn]);
+  }, [tokenIn, ritualBalance, tokenBal, setAmountIn]);
+
+  // Token chip shown in "You Receive" when direction is RITUAL → token
+  const TokenOutChip = () => {
+    if (modeTokens && !isFlipped) {
+      return (
+        <div className="relative flex-shrink-0">
+          <select
+            value={selectedToken.address}
+            onChange={e => {
+              const t = modeTokens.find(s => s.address === e.target.value);
+              if (t) changeToken(t);
+            }}
+            disabled={isBusy}
+            className="appearance-none pr-7 pl-3 py-2 rounded-xl text-sm font-semibold cursor-pointer outline-none"
+            style={{
+              background: `${accent}18`,
+              border: `1px solid ${accent}40`,
+              color: accent,
+              minWidth: "88px",
+            }}
+          >
+            {modeTokens.map(t => (
+              <option key={t.address} value={t.address} style={{ background: "#0D0A03", color: "#fff" }}>
+                {t.symbol}
+              </option>
+            ))}
+          </select>
+          <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path d="M2 3.5L5 6.5L8 3.5" stroke={accent} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      );
+    }
+    return (
+      <div
+        className="flex items-center gap-2 px-3 py-2 rounded-xl flex-shrink-0"
+        style={{
+          background: tokenOut.isNative ? "rgba(212,168,83,0.08)" : `${accent}10`,
+          border: `1px solid ${tokenOut.isNative ? "rgba(212,168,83,0.18)" : `${accent}28`}`,
+        }}
+      >
+        <TokenLogo symbol={tokenOut.symbol.slice(0, 2)} color={tokenOut.isNative ? "#D4A853" : accent} />
+        <span className="text-sm font-semibold whitespace-nowrap" style={{ color: tokenOut.isNative ? "#D4A853" : accent }}>
+          {tokenOut.symbol}
+        </span>
+      </div>
+    );
+  };
 
   return (
     <div className="w-full max-w-[420px] mx-auto">
@@ -177,14 +224,11 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
                 className="flex items-center gap-2 px-3 py-2 rounded-xl flex-shrink-0"
                 style={{
                   background: tokenIn.isNative ? "rgba(212,168,83,0.08)" : `${accent}10`,
-                  border: `1px solid ${tokenIn.isNative ? "rgba(212,168,83,0.15)" : `${accent}25`}`,
+                  border: `1px solid ${tokenIn.isNative ? "rgba(212,168,83,0.18)" : `${accent}28`}`,
                 }}
               >
                 <TokenLogo symbol={tokenIn.symbol.slice(0, 2)} color={tokenIn.isNative ? "#D4A853" : accent} />
-                <span
-                  className="text-sm font-semibold whitespace-nowrap"
-                  style={{ color: tokenIn.isNative ? "#D4A853" : accent }}
-                >
+                <span className="text-sm font-semibold whitespace-nowrap" style={{ color: tokenIn.isNative ? "#D4A853" : accent }}>
                   {tokenIn.symbol}
                 </span>
               </div>
@@ -208,51 +252,10 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
             <div className="flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <span className={`text-2xl sm:text-3xl font-semibold ${hasAmount && outDisplay !== "0" ? "text-white" : "text-white/20"}`}>
-                  {hasAmount && outDisplay !== "0" ? parseFloat(outDisplay).toFixed(tokenOut.decimals > 10 ? 6 : 4) : "0.00"}
+                  {hasAmount && outDisplay !== "0" ? parseFloat(outDisplay).toFixed(outPrecision) : "0.00"}
                 </span>
               </div>
-              {/* Token out chip — dropdown for Amina, static for others */}
-              {aminaStables && !isFlipped ? (
-                <div className="relative flex-shrink-0">
-                  <select
-                    value={selectedStable.address}
-                    onChange={e => {
-                      const t = aminaStables.find(s => s.address === e.target.value);
-                      if (t) changeStable(t);
-                    }}
-                    disabled={isBusy}
-                    className="appearance-none pr-7 pl-3 py-2 rounded-xl text-sm font-semibold cursor-pointer outline-none"
-                    style={{
-                      background: `${accent}14`,
-                      border: `1px solid ${accent}35`,
-                      color: accent,
-                      minWidth: "92px",
-                    }}
-                  >
-                    {aminaStables.map(t => (
-                      <option key={t.address} value={t.address} style={{ background: "#0D0A03", color: "#fff" }}>
-                        {t.symbol}
-                      </option>
-                    ))}
-                  </select>
-                  <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path d="M2 3.5L5 6.5L8 3.5" stroke={accent} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-              ) : (
-                <div
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl flex-shrink-0"
-                  style={{
-                    background: tokenOut.isNative ? "rgba(212,168,83,0.08)" : `${accent}10`,
-                    border: `1px solid ${tokenOut.isNative ? "rgba(212,168,83,0.15)" : `${accent}25`}`,
-                  }}
-                >
-                  <TokenLogo symbol={tokenOut.symbol.slice(0, 2)} color={tokenOut.isNative ? "#D4A853" : accent} />
-                  <span className="text-sm font-semibold whitespace-nowrap" style={{ color: tokenOut.isNative ? "#D4A853" : accent }}>
-                    {tokenOut.symbol}
-                  </span>
-                </div>
-              )}
+              <TokenOutChip />
             </div>
           </div>
         </div>
@@ -268,7 +271,7 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
           <div className="pt-2 mt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
             <InfoRow
               label="Minimum Received"
-              value={hasAmount && outDisplay !== "0" ? `${parseFloat(outDisplay).toFixed(tokenOut.decimals > 10 ? 6 : 4)} ${tokenOut.symbol}` : "—"}
+              value={hasAmount && outDisplay !== "0" ? `${parseFloat(outDisplay).toFixed(outPrecision)} ${tokenOut.symbol}` : "—"}
               highlight
             />
           </div>
@@ -316,13 +319,10 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
                 <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 Confirming in wallet…
               </span>
-            ) : !hasLiquidity ? (
-              "Pool has no liquidity"
-            ) : !hasAmount ? (
-              "Enter an amount"
-            ) : (
-              `Swap ${tokenIn.symbol} → ${tokenOut.symbol}`
-            )}
+            ) : !hasLiquidity ? "Pool has no liquidity"
+              : !hasAmount ? "Enter an amount"
+              : `Swap ${tokenIn.symbol} → ${tokenOut.symbol}`
+            }
           </button>
         </div>
       </div>
@@ -338,6 +338,7 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
             accent={accent}
             tokenOut={tokenOut.symbol}
             outAmount={outDisplay}
+            outPrecision={outPrecision}
           />
         </div>
       )}
@@ -353,11 +354,11 @@ interface TxStatusCardProps {
   accent: string;
   tokenOut: string;
   outAmount: string;
+  outPrecision: number;
 }
 
-function TxStatusCard({ txState, txHash, error, onReset, accent, tokenOut, outAmount }: TxStatusCardProps) {
+function TxStatusCard({ txState, txHash, error, onReset, accent, tokenOut, outAmount, outPrecision }: TxStatusCardProps) {
   if (txState === "idle") return null;
-
   const isSuccess = txState === "success";
   const isError   = txState === "error";
   const isPending = txState === "swapping" || txState === "approving";
@@ -382,14 +383,11 @@ function TxStatusCard({ txState, txHash, error, onReset, accent, tokenOut, outAm
           </div>
         </div>
       )}
-
       {isSuccess && txHash && (
         <div>
           <div className="flex items-start gap-3 mb-3">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-              style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.3)" }}
-            >
+            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+              style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.3)" }}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M2.5 7L5.5 10L11.5 4" stroke="#4ADE80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -397,40 +395,28 @@ function TxStatusCard({ txState, txHash, error, onReset, accent, tokenOut, outAm
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white">Swap Complete</p>
               <p className="text-xs text-earth-100/50 mt-0.5">
-                You received <span className="text-white font-medium">{parseFloat(outAmount).toFixed(4)} {tokenOut}</span>
+                You received <span className="text-white font-medium">{parseFloat(outAmount).toFixed(outPrecision)} {tokenOut}</span>
               </p>
             </div>
           </div>
-          <div
-            className="rounded-xl p-3 mb-3"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-          >
+          <div className="rounded-xl p-3 mb-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
             <p className="text-xs text-earth-100/30 mb-1">Transaction Hash</p>
-            <a
-              href={`https://explorer.ritualfoundation.org/tx/${txHash}`}
-              target="_blank" rel="noopener noreferrer"
-              className="text-xs text-ritual/70 hover:text-ritual transition-colors font-mono break-all"
-            >
+            <a href={`https://explorer.ritualfoundation.org/tx/${txHash}`} target="_blank" rel="noopener noreferrer"
+              className="text-xs text-ritual/70 hover:text-ritual transition-colors font-mono break-all">
               {txHash.slice(0, 18)}…{txHash.slice(-12)}
             </a>
           </div>
-          <button
-            onClick={onReset}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98]"
-            style={{ background: "rgba(212,168,83,0.1)", border: "1px solid rgba(212,168,83,0.2)", color: "#D4A853" }}
-          >
+          <button onClick={onReset} className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98]"
+            style={{ background: "rgba(212,168,83,0.1)", border: "1px solid rgba(212,168,83,0.2)", color: "#D4A853" }}>
             New Swap
           </button>
         </div>
       )}
-
       {isError && (
         <div>
           <div className="flex items-start gap-3 mb-3">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-              style={{ background: "rgba(248,113,113,0.15)", border: "1px solid rgba(248,113,113,0.3)" }}
-            >
+            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+              style={{ background: "rgba(248,113,113,0.15)", border: "1px solid rgba(248,113,113,0.3)" }}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M4 4l6 6M10 4l-6 6" stroke="#F87171" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
@@ -440,11 +426,8 @@ function TxStatusCard({ txState, txHash, error, onReset, accent, tokenOut, outAm
               <p className="text-xs text-red-300/60 mt-0.5 leading-relaxed">{error}</p>
             </div>
           </div>
-          <button
-            onClick={onReset}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98]"
-            style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", color: "#F87171" }}
-          >
+          <button onClick={onReset} className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98]"
+            style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", color: "#F87171" }}>
             Try Again
           </button>
         </div>
