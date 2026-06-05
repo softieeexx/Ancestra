@@ -9,9 +9,9 @@ import { FACTORY_ABI, PAIR_ABI } from "@/lib/abi";
 
 function StatBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)" }}>
-      <div className="text-xs text-earth-100/40 mb-1">{label}</div>
-      <div className="text-sm font-medium text-white truncate">{value}</div>
+    <div className="rounded-xl p-2.5 sm:p-3 overflow-hidden" style={{ background: "rgba(255,255,255,0.03)" }}>
+      <div className="text-[10px] sm:text-xs text-earth-100/40 mb-1 truncate">{label}</div>
+      <div className="text-xs sm:text-sm font-medium text-white truncate">{value}</div>
     </div>
   );
 }
@@ -52,17 +52,17 @@ function PoolCard({ poolKey }: { poolKey: keyof typeof POOLS }) {
         <a
           href={`https://explorer.ritualfoundation.org/address/${pool.pairAddress}`}
           target="_blank" rel="noopener noreferrer"
-          className="text-xs font-mono text-earth-100/30 hover:text-earth-100/60 transition-colors"
+          className="text-xs font-mono text-earth-100/30 hover:text-earth-100/60 transition-colors flex-shrink-0"
         >
-          {pool.pairAddress.slice(0, 8)}…{pool.pairAddress.slice(-4)}
+          {pool.pairAddress.slice(0, 6)}…{pool.pairAddress.slice(-4)}
         </a>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <StatBox label={`${pool.token0.symbol} Reserve`} value={r0.toFixed(pool.token0.decimals > 10 ? 6 : 2)} />
-        <StatBox label={`${pool.token1.symbol} Reserve`} value={r1.toFixed(pool.token1.decimals > 6 ? 6 : 4)} />
-        <StatBox label="Price" value={`${price.toFixed(4)} ${pool.token1.symbol}/${pool.token0.symbol}`} />
+        <StatBox label={`${pool.token0.symbol} Rsrv`} value={r0.toFixed(pool.token0.decimals > 10 ? 6 : 2)} />
+        <StatBox label={`${pool.token1.symbol} Rsrv`} value={r1.toFixed(pool.token1.decimals > 6 ? 6 : 4)} />
+        <StatBox label="Price" value={`${price.toFixed(4)} ${pool.token1.symbol}`} />
         <StatBox label="LP Supply" value={lp ? parseFloat(formatUnits(lp, 18)).toFixed(4) : "—"} />
       </div>
 
@@ -129,14 +129,15 @@ export default function PoolsPage() {
                 ["Router",  CONTRACTS.ROUTER],
                 ["WRITUAL", CONTRACTS.WRITUAL],
               ] as [string, string][]).map(([label, addr]) => (
-                <div key={addr} className="flex items-center justify-between gap-4">
-                  <span className="text-earth-100/40 flex-shrink-0">{label}</span>
+                <div key={addr} className="flex items-center justify-between gap-2 min-w-0">
+                  <span className="text-earth-100/40 flex-shrink-0 w-16">{label}</span>
                   <a
                     href={`https://explorer.ritualfoundation.org/address/${addr}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="text-ritual/60 hover:text-ritual transition-colors truncate"
+                    className="text-ritual/60 hover:text-ritual transition-colors min-w-0 truncate"
                   >
-                    {addr}
+                    <span className="hidden sm:inline">{addr}</span>
+                    <span className="sm:hidden">{addr.slice(0, 10)}…{addr.slice(-6)}</span>
                   </a>
                 </div>
               ))}

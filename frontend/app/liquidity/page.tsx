@@ -36,14 +36,19 @@ export default function LiquidityPage() {
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className="flex-1 py-3 text-sm font-semibold transition-all"
+                className="flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-all"
                 style={
                   tab === t
                     ? { background: "rgba(212,168,83,0.15)", color: "#D4A853" }
                     : { background: "rgba(255,255,255,0.02)", color: "rgba(255,255,255,0.4)" }
                 }
               >
-                {t === "add" ? "Add Liquidity" : t === "remove" ? "Remove Liquidity" : "Faucet"}
+                <span className="sm:hidden">
+                  {t === "add" ? "Add" : t === "remove" ? "Remove" : "Faucet"}
+                </span>
+                <span className="hidden sm:inline">
+                  {t === "add" ? "Add Liquidity" : t === "remove" ? "Remove Liquidity" : "Faucet"}
+                </span>
               </button>
             ))}
           </div>
@@ -118,7 +123,7 @@ function AddLiquidity({ address }: { address: Address }) {
               <input
                 type="text" inputMode="decimal" placeholder="0.00" value={amountA}
                 onChange={e => handleAmountAChange(e.target.value)}
-                className="flex-1 bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-white/15"
+                className="flex-1 bg-transparent text-xl sm:text-2xl font-semibold text-white outline-none placeholder:text-white/15 min-w-0"
               />
               <TokenSelector selected={tokenA} exclude={tokenB.address} onSelect={t => { setTokenA(t); setAmountA(""); setAmountB(""); }} />
             </div>
@@ -133,7 +138,7 @@ function AddLiquidity({ address }: { address: Address }) {
               <input
                 type="text" inputMode="decimal" placeholder="0.00" value={amountB}
                 onChange={e => { if (/^\d*\.?\d*$/.test(e.target.value)) setAmountB(e.target.value); }}
-                className="flex-1 bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-white/15"
+                className="flex-1 bg-transparent text-xl sm:text-2xl font-semibold text-white outline-none placeholder:text-white/15 min-w-0"
               />
               <TokenSelector selected={tokenB} exclude={tokenA.address} onSelect={t => { setTokenB(t); setAmountA(""); setAmountB(""); }} />
             </div>
@@ -193,15 +198,17 @@ function RemoveLiquidity({ address }: { address: Address }) {
         <div className="grid grid-cols-3 gap-2 mb-4">
           {(Object.keys(POOLS) as Array<keyof typeof POOLS>).map(k => {
             const p = POOLS[k];
+            const altSymbol = p.token1.symbol; // token1 is always the non-WRITUAL token
             return (
               <button key={k} onClick={() => { setSelectedPool(k); setLpAmount(""); }}
-                className="py-2 px-3 rounded-xl text-xs font-semibold transition-all"
+                className="py-2 px-1.5 sm:px-3 rounded-xl text-xs font-semibold transition-all text-center"
                 style={selectedPool === k
                   ? { background: `${p.color}20`, color: p.color, border: `1px solid ${p.color}40` }
                   : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.06)" }
                 }
               >
-                {p.token0.symbol}/{p.token1.symbol}
+                <span className="sm:hidden">RITE/{altSymbol}</span>
+                <span className="hidden sm:inline">{p.token0.symbol}/{p.token1.symbol}</span>
               </button>
             );
           })}
@@ -228,7 +235,7 @@ function RemoveLiquidity({ address }: { address: Address }) {
           <input
             type="text" inputMode="decimal" placeholder="0.00" value={lpAmount}
             onChange={e => { if (/^\d*\.?\d*$/.test(e.target.value)) setLpAmount(e.target.value); }}
-            className="w-full bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-white/15"
+            className="w-full bg-transparent text-xl sm:text-2xl font-semibold text-white outline-none placeholder:text-white/15 min-w-0"
           />
         </div>
 

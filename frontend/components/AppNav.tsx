@@ -30,20 +30,23 @@ export default function AppNav() {
     <>
     {wrongNetwork && (
       <div
-        className="flex items-center justify-center gap-3 px-4 py-2 text-xs font-semibold font-rajdhani tracking-wider"
+        className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 px-4 py-2 text-xs font-semibold font-rajdhani tracking-wider"
         style={{ background: "rgba(248,113,113,0.12)", borderBottom: "1px solid rgba(248,113,113,0.25)", color: "#F87171" }}
       >
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
-          <path d="M8 2L14 13H2L8 2Z" stroke="#F87171" strokeWidth="1.4" strokeLinejoin="round"/>
-          <path d="M8 6v3M8 11v0.5" stroke="#F87171" strokeWidth="1.4" strokeLinecap="round"/>
-        </svg>
-        <span>WRONG NETWORK — YOU&apos;RE NOT ON RITUAL TESTNET</span>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
+            <path d="M8 2L14 13H2L8 2Z" stroke="#F87171" strokeWidth="1.4" strokeLinejoin="round"/>
+            <path d="M8 6v3M8 11v0.5" stroke="#F87171" strokeWidth="1.4" strokeLinecap="round"/>
+          </svg>
+          <span className="hidden sm:inline">WRONG NETWORK — YOU&apos;RE NOT ON RITUAL TESTNET</span>
+          <span className="sm:hidden">WRONG NETWORK</span>
+        </div>
         <button
           onClick={() => switchChainAsync({ chainId: RITUAL_CHAIN_ID })}
-          className="px-3 py-1 rounded-lg transition-all hover:opacity-80"
+          className="px-3 py-1 rounded-lg transition-all hover:opacity-80 flex-shrink-0"
           style={{ background: "rgba(248,113,113,0.2)", border: "1px solid rgba(248,113,113,0.4)", color: "#F87171", letterSpacing: "0.1em" }}
         >
-          SWITCH NOW
+          SWITCH TO RITUAL
         </button>
       </div>
     )}

@@ -37,7 +37,7 @@ export default function DappFrame({ children }: { children: ReactNode }) {
       <Corner style={{ bottom: "-1px", right: "-1px", transform: "scale(-1)" }} />
 
       {/* ── Outer matte ── */}
-      <div style={{ position: "relative", minHeight: "100vh", padding: "14px", background: "#070503", overflow: "hidden" }}>
+      <div style={{ position: "relative", minHeight: "100vh", padding: "clamp(5px, 2vw, 14px)", background: "#070503", overflow: "hidden" }}>
         {/* Background image bleeds through matte at low opacity */}
         <Image
           src="/landing-bg.jpeg"
@@ -55,7 +55,7 @@ export default function DappFrame({ children }: { children: ReactNode }) {
             zIndex: 1,
             display: "flex",
             flexDirection: "column",
-            minHeight: "calc(100vh - 28px)",
+            minHeight: "calc(100vh - clamp(10px, 4vw, 28px))",
             background: "rgba(14,11,7,0.93)",
             backdropFilter: "blur(2px)",
             WebkitBackdropFilter: "blur(2px)",

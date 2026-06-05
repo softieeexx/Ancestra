@@ -83,9 +83,9 @@ function LpPositionRow({ poolKey, address }: { poolKey: keyof typeof POOLS; addr
         <span className="text-xs font-mono" style={{ color: pool.color }}>{share.toFixed(4)}% share</span>
       </div>
       <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-        <div><span className="text-earth-100/40">{pool.token0.symbol}: </span><span className="text-white/70">{parseFloat(formatUnits(myR0, pool.token0.decimals)).toFixed(6)}</span></div>
-        <div><span className="text-earth-100/40">{pool.token1.symbol}: </span><span className="text-white/70">{parseFloat(formatUnits(myR1, pool.token1.decimals)).toFixed(6)}</span></div>
-        <div className="col-span-2"><span className="text-earth-100/40">LP: </span><span className="text-white/70">{parseFloat(formatUnits(lp, 18)).toFixed(6)} AMLP</span></div>
+        <div className="min-w-0 overflow-hidden"><span className="text-earth-100/40">{pool.token0.symbol}: </span><span className="text-white/70">{parseFloat(formatUnits(myR0, pool.token0.decimals)).toFixed(4)}</span></div>
+        <div className="min-w-0 overflow-hidden"><span className="text-earth-100/40">{pool.token1.symbol}: </span><span className="text-white/70">{parseFloat(formatUnits(myR1, pool.token1.decimals)).toFixed(4)}</span></div>
+        <div className="col-span-2 min-w-0 overflow-hidden"><span className="text-earth-100/40">LP: </span><span className="text-white/70">{parseFloat(formatUnits(lp, 18)).toFixed(6)}</span></div>
       </div>
       <div className="flex gap-2">
         <a href={`/swap/${pool.id}`} className="flex-1 py-1.5 text-center rounded-lg text-xs font-semibold" style={{ background: `${pool.color}12`, color: pool.color, border: `1px solid ${pool.color}25` }}>
@@ -145,10 +145,10 @@ export default function PortfolioPage() {
               {/* Faucet hint */}
               <div className="rounded-xl p-4" style={{ background: "rgba(212,168,83,0.05)", border: "1px solid rgba(212,168,83,0.10)" }}>
                 <p className="text-xs text-ritual/70 font-semibold mb-1">Need testnet tokens?</p>
-                <p className="text-xs text-earth-100/40">
-                  USDC, WETH and DAI are mock tokens — call <code className="text-ritual/60">faucet(address)</code> on
-                  their contracts. Addresses are on the{" "}
-                  <a href="/pools" className="text-ritual/70 hover:text-ritual transition-colors">Pools page</a>.
+                <p className="text-xs text-earth-100/40 leading-relaxed">
+                  USDC, WETH, and DAI are mock tokens — use the{" "}
+                  <a href="/liquidity" className="text-ritual/70 hover:text-ritual transition-colors">Faucet tab</a>{" "}
+                  on the Liquidity page to mint 1,000 of each.
                 </p>
               </div>
             </div>

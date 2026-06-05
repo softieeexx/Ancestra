@@ -151,29 +151,30 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
       >
         {/* Card header */}
         <div
-          className="flex items-center justify-between px-5 py-4"
+          className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 gap-2"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
         >
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 min-w-0">
             <div
-              className="w-2 h-2 rounded-full"
+              className="w-2 h-2 rounded-full flex-shrink-0"
               style={{ background: accent, boxShadow: `0 0 6px ${accent}` }}
             />
-            <span className="text-sm font-display font-semibold text-white">
+            <span className="text-sm font-display font-semibold text-white truncate">
               {pool.name}
             </span>
             <span
-              className="text-xs px-2 py-0.5 rounded-full font-mono"
+              className="hidden xs:inline text-xs px-2 py-0.5 rounded-full font-mono flex-shrink-0 sm:inline"
               style={{
                 background: `${accent}14`,
                 color: accent,
                 border: `1px solid ${accent}30`,
+                display: "inline",
               }}
             >
               {pool.subtitle}
             </span>
           </div>
-          <span className="text-xs text-earth-100/30 font-mono">Ritual Chain</span>
+          <span className="text-xs text-earth-100/30 font-mono flex-shrink-0 hidden sm:inline">Ritual Chain</span>
         </div>
 
         <div className="p-4 space-y-1.5">
@@ -217,7 +218,7 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
                   if (/^\d*\.?\d*$/.test(val)) setAmountIn(val);
                 }}
                 disabled={isBusy}
-                className="flex-1 bg-transparent text-3xl font-semibold text-white outline-none placeholder:text-white/15 min-w-0"
+                className="flex-1 bg-transparent text-2xl sm:text-3xl font-semibold text-white outline-none placeholder:text-white/15 min-w-0"
               />
               <div
                 className="flex items-center gap-2 px-3 py-2 rounded-xl flex-shrink-0"
@@ -253,7 +254,7 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
             <div className="flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <span
-                  className={`text-3xl font-semibold ${hasAmount && outDisplay !== "0" ? "text-white" : "text-white/20"}`}
+                  className={`text-2xl sm:text-3xl font-semibold ${hasAmount && outDisplay !== "0" ? "text-white" : "text-white/20"}`}
                 >
                   {hasAmount && outDisplay !== "0" ? outDisplay : "0.00"}
                 </span>

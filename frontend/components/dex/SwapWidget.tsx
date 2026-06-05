@@ -121,26 +121,24 @@ export default function SwapWidget() {
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+        <div className="flex flex-wrap items-center justify-between gap-y-2 px-4 sm:px-5 py-3 sm:py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
           <span className="text-sm font-semibold text-white">Swap</span>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 text-xs text-earth-100/40">
-              <span>Slippage:</span>
-              {[0.1, 0.3, 0.5, 1].map(s => (
-                <button
-                  key={s}
-                  onClick={() => setSlippage(s)}
-                  className="px-1.5 py-0.5 rounded text-xs transition-colors"
-                  style={{
-                    background: slippage === s ? "rgba(212,168,83,0.2)" : "transparent",
-                    color: slippage === s ? "#D4A853" : "rgba(255,255,255,0.3)",
-                    border: slippage === s ? "1px solid rgba(212,168,83,0.3)" : "1px solid transparent",
-                  }}
-                >
-                  {s}%
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center gap-1 text-xs text-earth-100/40">
+            <span className="mr-0.5">Slip:</span>
+            {[0.1, 0.3, 0.5, 1].map(s => (
+              <button
+                key={s}
+                onClick={() => setSlippage(s)}
+                className="px-1.5 py-0.5 rounded text-xs transition-colors"
+                style={{
+                  background: slippage === s ? "rgba(212,168,83,0.2)" : "transparent",
+                  color: slippage === s ? "#D4A853" : "rgba(255,255,255,0.3)",
+                  border: slippage === s ? "1px solid rgba(212,168,83,0.3)" : "1px solid transparent",
+                }}
+              >
+                {s}%
+              </button>
+            ))}
           </div>
         </div>
 
@@ -175,7 +173,7 @@ export default function SwapWidget() {
                   if (/^\d*\.?\d*$/.test(e.target.value)) setAmountIn(e.target.value);
                 }}
                 disabled={isBusy}
-                className="flex-1 bg-transparent text-3xl font-semibold text-white outline-none placeholder:text-white/15 min-w-0"
+                className="flex-1 bg-transparent text-2xl sm:text-3xl font-semibold text-white outline-none placeholder:text-white/15 min-w-0"
               />
               <TokenSelector
                 selected={tokenIn}
@@ -219,7 +217,7 @@ export default function SwapWidget() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className={`flex-1 text-3xl font-semibold ${hasAmount && amountOut ? "text-white" : "text-white/20"}`}>
+              <span className={`flex-1 text-2xl sm:text-3xl font-semibold min-w-0 ${hasAmount && amountOut ? "text-white" : "text-white/20"}`}>
                 {hasAmount && amountOut ? parseFloat(amountOut).toFixed(tokenOut.decimals > 10 ? 6 : 4) : "0.00"}
               </span>
               <TokenSelector
