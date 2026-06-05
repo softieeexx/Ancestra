@@ -8,6 +8,12 @@ import { formatEther, formatUnits } from "viem";
 import { ritualChain } from "@/lib/config";
 import { ERC20_ABI } from "@/lib/abi";
 
+const QUEEN_TITLES: Record<ModeId, { title: string; font: string }> = {
+  amina:     { title: "Queen of Zaria",       font: "Cinzel"   },
+  nefertiti: { title: "Queen of Egypt",        font: "Cinzel"   },
+  yaa:       { title: "Queen Mother of Ejisu", font: "Rajdhani" },
+};
+
 interface SwapInterfaceProps {
   mode: ModeId;
   onSwapSuccess?: () => void;
@@ -92,6 +98,7 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
   const hasAmount  = !!amountIn && amountIn !== "0";
   const isBusy     = txState === "swapping" || txState === "approving";
   const accent     = pool.color;
+  const queenTitle = QUEEN_TITLES[mode];
 
   // Precision for output display
   const outPrecision = tokenOut.decimals <= 6 ? 4 : tokenOut.decimals === 9 ? 6 : 6;
@@ -176,14 +183,32 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
           style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
         >
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: accent, boxShadow: `0 0 6px ${accent}` }} />
-            <span className="text-sm font-display font-semibold text-white truncate">{pool.name}</span>
-            <span
-              className="text-xs px-2 py-0.5 rounded-full font-mono flex-shrink-0"
-              style={{ background: `${accent}14`, color: accent, border: `1px solid ${accent}30` }}
-            >
-              {pool.subtitle}
-            </span>
+            <div className="w-2 h-2 rounded-full flex-shrink-0 self-start mt-1.5" style={{ background: accent, boxShadow: `0 0 6px ${accent}` }} />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-display font-semibold text-white truncate">{pool.name}</span>
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full font-mono flex-shrink-0"
+                  style={{ background: `${accent}14`, color: accent, border: `1px solid ${accent}30` }}
+                >
+                  {pool.subtitle.toUpperCase()}
+                </span>
+              </div>
+              <p
+                className="mt-0.5 truncate"
+                style={{
+                  fontFamily: queenTitle.font === "Rajdhani" ? "Rajdhani, sans-serif" : "Cinzel, serif",
+                  color: accent,
+                  fontSize: "0.62rem",
+                  letterSpacing: queenTitle.font === "Rajdhani" ? "0.16em" : "0.10em",
+                  opacity: 0.75,
+                  fontStyle: queenTitle.font === "Cinzel" ? "italic" : "normal",
+                  fontWeight: queenTitle.font === "Rajdhani" ? 600 : 400,
+                }}
+              >
+                {queenTitle.title}
+              </p>
+            </div>
           </div>
           <span className="text-xs text-earth-100/30 font-mono flex-shrink-0 hidden sm:inline">Ritual Chain</span>
         </div>
