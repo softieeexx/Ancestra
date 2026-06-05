@@ -3,16 +3,16 @@
 import { useState, useCallback } from "react";
 import { useAncestra } from "@/hooks/useAncestra";
 import { POOLS, ModeId } from "@/lib/constants";
-import { useAccount, useBalance } from "wagmi";
+import { useAccount, useBalance, useReadContract } from "wagmi";
 import { formatEther, formatUnits } from "viem";
 import { ritualChain } from "@/lib/config";
+import { ERC20_ABI } from "@/lib/abi";
 
 interface SwapInterfaceProps {
   mode: ModeId;
   onSwapSuccess?: () => void;
 }
 
-// Token logo placeholder — letter avatar with pool accent
 function TokenLogo({ symbol, color }: { symbol: string; color: string }) {
   return (
     <div
@@ -24,7 +24,6 @@ function TokenLogo({ symbol, color }: { symbol: string; color: string }) {
   );
 }
 
-// Animated swap direction button
 function SwapArrow({ onClick, spinning }: { onClick: () => void; spinning: boolean }) {
   return (
     <button
@@ -38,10 +37,7 @@ function SwapArrow({ onClick, spinning }: { onClick: () => void; spinning: boole
       }}
     >
       <svg
-        width="16"
-        height="16"
-        viewBox="0 0 16 16"
-        fill="none"
+        width="16" height="16" viewBox="0 0 16 16" fill="none"
         className={`transition-transform duration-300 ${spinning ? "rotate-180" : ""} group-hover:rotate-180`}
       >
         <path d="M8 2v12M4 10l4 4 4-4" stroke="#D4A853" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -50,24 +46,11 @@ function SwapArrow({ onClick, spinning }: { onClick: () => void; spinning: boole
   );
 }
 
-// Info row used in the details panel
-function InfoRow({
-  label,
-  value,
-  highlight,
-}: {
-  label: string;
-  value: string;
-  highlight?: boolean;
-}) {
+function InfoRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-xs text-earth-100/40">{label}</span>
-      <span
-        className={`text-xs font-medium ${highlight ? "text-ritual" : "text-earth-100/70"}`}
-      >
-        {value}
-      </span>
+      <span className={`text-xs font-medium ${highlight ? "text-ritual" : "text-earth-100/70"}`}>{value}</span>
     </div>
   );
 }
@@ -76,70 +59,61 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
   const { isConnected, address } = useAccount();
   const pool = POOLS[mode];
   const {
-    amountIn,
-    setAmountIn,
-    estimatedOut,
-    fee,
-    txState,
-    txHash,
-    error,
-    swap,
-    reset,
-    reserve0,
-    reserve1,
+    amountIn, setAmountIn,
+    isFlipped, flip,
+    tokenIn, tokenOut,
+    selectedStable, changeStable,
+    aminaStables,
+    estimatedOut, fee,
+    txState, txHash, error,
+    swap, reset,
+    reserve0, reserve1,
     hasLiquidity,
   } = useAncestra(mode, onSwapSuccess);
 
   const [arrowSpin, setArrowSpin] = useState(false);
 
   // Native RITUAL balance
-  const { data: ritualBalance } = useBalance({
-    address,
-    chainId: ritualChain.id,
+  const { data: ritualBalance } = useBalance({ address, chainId: ritualChain.id });
+
+  // ERC20 balance for the selected stable (needed when tokenIn = stable)
+  const { data: stableBal } = useReadContract({
+    address: selectedStable.address,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { enabled: !!address },
   });
 
   if (!isConnected) return null;
 
-  const ritualBalanceDisplay = ritualBalance
-    ? parseFloat(formatEther(ritualBalance.value)).toFixed(4)
-    : "—";
+  // Balance display for the "You Pay" side
+  const balanceDisplay = tokenIn.isNative
+    ? (ritualBalance ? parseFloat(formatEther(ritualBalance.value)).toFixed(4) : "—")
+    : (stableBal ? parseFloat(formatUnits(stableBal as bigint, tokenIn.decimals)).toFixed(4) : "—");
 
   const outDisplay = estimatedOut();
-  const hasAmount = !!amountIn && amountIn !== "0";
-
-  // Price impact — naive estimate from reserve ratio shift
-  const priceImpact = (() => {
-    if (!hasAmount || !reserve0 || !reserve1) return "—";
-    try {
-      const inAmt = parseFloat(amountIn);
-      const r0 = parseFloat(formatEther(reserve0));
-      const impact = (inAmt / (r0 + inAmt)) * 100;
-      return impact < 0.01 ? "<0.01%" : `${impact.toFixed(2)}%`;
-    } catch {
-      return "—";
-    }
-  })();
+  const hasAmount  = !!amountIn && amountIn !== "0";
+  const isBusy     = txState === "swapping" || txState === "approving";
+  const accent     = pool.color;
 
   const handleArrow = useCallback(() => {
     setArrowSpin(true);
     setTimeout(() => setArrowSpin(false), 350);
-  }, []);
+    flip();
+  }, [flip]);
 
   const handleMax = useCallback(() => {
-    if (ritualBalance) {
-      // leave small buffer for gas
+    if (tokenIn.isNative && ritualBalance) {
       const max = parseFloat(formatEther(ritualBalance.value)) - 0.01;
       if (max > 0) setAmountIn(max.toFixed(6));
+    } else if (stableBal) {
+      setAmountIn(formatUnits(stableBal as bigint, tokenIn.decimals));
     }
-  }, [ritualBalance, setAmountIn]);
-
-  const isBusy = txState === "swapping";
-  const accent = pool.color;
+  }, [tokenIn, ritualBalance, stableBal, setAmountIn]);
 
   return (
     <div className="w-full max-w-[420px] mx-auto">
-
-      {/* ── Main swap card ─────────────────────────────── */}
       <div
         className="rounded-2xl overflow-hidden"
         style={{
@@ -155,21 +129,11 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
           style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
         >
           <div className="flex items-center gap-2 min-w-0">
-            <div
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ background: accent, boxShadow: `0 0 6px ${accent}` }}
-            />
-            <span className="text-sm font-display font-semibold text-white truncate">
-              {pool.name}
-            </span>
+            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: accent, boxShadow: `0 0 6px ${accent}` }} />
+            <span className="text-sm font-display font-semibold text-white truncate">{pool.name}</span>
             <span
-              className="hidden xs:inline text-xs px-2 py-0.5 rounded-full font-mono flex-shrink-0 sm:inline"
-              style={{
-                background: `${accent}14`,
-                color: accent,
-                border: `1px solid ${accent}30`,
-                display: "inline",
-              }}
+              className="text-xs px-2 py-0.5 rounded-full font-mono flex-shrink-0"
+              style={{ background: `${accent}14`, color: accent, border: `1px solid ${accent}30` }}
             >
               {pool.subtitle}
             </span>
@@ -179,134 +143,137 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
 
         <div className="p-4 space-y-1.5">
 
-          {/* ── Token In ─────────────────────────────────── */}
+          {/* ── Token In ───────────────────────────────── */}
           <div
-            className="rounded-xl p-4 transition-all duration-200 focus-within:ring-1"
-            style={{
-              background: "rgba(255,255,255,0.035)",
-              border: "1px solid rgba(255,255,255,0.06)",
-            }}
+            className="rounded-xl p-4 transition-all duration-200"
+            style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.06)" }}
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs text-earth-100/35 tracking-wide">You Pay</span>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-earth-100/30">
-                  Balance: <span className="text-earth-100/50">{ritualBalanceDisplay}</span>
+                  Balance: <span className="text-earth-100/50">{balanceDisplay}</span>
                 </span>
                 <button
                   onClick={handleMax}
                   className="text-xs font-semibold px-2 py-0.5 rounded-md transition-colors hover:opacity-80"
-                  style={{
-                    background: "rgba(212, 168, 83, 0.12)",
-                    color: "#D4A853",
-                    border: "1px solid rgba(212,168,83,0.2)",
-                  }}
+                  style={{ background: "rgba(212,168,83,0.12)", color: "#D4A853", border: "1px solid rgba(212,168,83,0.2)" }}
                 >
                   MAX
                 </button>
               </div>
             </div>
-
             <div className="flex items-center gap-3">
               <input
                 type="text"
                 inputMode="decimal"
                 placeholder="0.00"
                 value={amountIn}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (/^\d*\.?\d*$/.test(val)) setAmountIn(val);
-                }}
+                onChange={e => { if (/^\d*\.?\d*$/.test(e.target.value)) setAmountIn(e.target.value); }}
                 disabled={isBusy}
                 className="flex-1 bg-transparent text-2xl sm:text-3xl font-semibold text-white outline-none placeholder:text-white/15 min-w-0"
               />
               <div
                 className="flex items-center gap-2 px-3 py-2 rounded-xl flex-shrink-0"
                 style={{
-                  background: "rgba(212, 168, 83, 0.08)",
-                  border: "1px solid rgba(212,168,83,0.15)",
+                  background: tokenIn.isNative ? "rgba(212,168,83,0.08)" : `${accent}10`,
+                  border: `1px solid ${tokenIn.isNative ? "rgba(212,168,83,0.15)" : `${accent}25`}`,
                 }}
               >
-                <TokenLogo symbol="RI" color="#D4A853" />
-                <span className="text-sm font-semibold text-ritual whitespace-nowrap">RITUAL</span>
+                <TokenLogo symbol={tokenIn.symbol.slice(0, 2)} color={tokenIn.isNative ? "#D4A853" : accent} />
+                <span
+                  className="text-sm font-semibold whitespace-nowrap"
+                  style={{ color: tokenIn.isNative ? "#D4A853" : accent }}
+                >
+                  {tokenIn.symbol}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* ── Swap direction ─────────────────────────── */}
+          {/* ── Flip arrow ──────────────────────────── */}
           <div className="flex items-center justify-center -my-0.5 relative z-10">
             <SwapArrow onClick={handleArrow} spinning={arrowSpin} />
           </div>
 
-          {/* ── Token Out ────────────────────────────────── */}
+          {/* ── Token Out ──────────────────────────────── */}
           <div
             className="rounded-xl p-4"
-            style={{
-              background: "rgba(255,255,255,0.02)",
-              border: "1px solid rgba(255,255,255,0.05)",
-            }}
+            style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
           >
+            {/* Stable selector — Amina mode only */}
+            {aminaStables && (
+              <div className="flex items-center gap-1.5 mb-3">
+                <span className="text-xs text-earth-100/30 mr-0.5">Stable:</span>
+                {aminaStables.map(t => (
+                  <button
+                    key={t.address}
+                    onClick={() => changeStable(t)}
+                    disabled={isBusy}
+                    className="px-2.5 py-0.5 rounded-lg text-xs font-semibold transition-all"
+                    style={{
+                      background: selectedStable.address === t.address ? `${accent}22` : "rgba(255,255,255,0.04)",
+                      border: `1px solid ${selectedStable.address === t.address ? `${accent}50` : "rgba(255,255,255,0.08)"}`,
+                      color: selectedStable.address === t.address ? accent : "rgba(255,255,255,0.35)",
+                    }}
+                  >
+                    {t.symbol}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs text-earth-100/35 tracking-wide">You Receive</span>
               <span className="text-xs text-earth-100/25">Estimated</span>
             </div>
-
             <div className="flex items-center gap-3">
               <div className="flex-1 min-w-0">
-                <span
-                  className={`text-2xl sm:text-3xl font-semibold ${hasAmount && outDisplay !== "0" ? "text-white" : "text-white/20"}`}
-                >
-                  {hasAmount && outDisplay !== "0" ? outDisplay : "0.00"}
+                <span className={`text-2xl sm:text-3xl font-semibold ${hasAmount && outDisplay !== "0" ? "text-white" : "text-white/20"}`}>
+                  {hasAmount && outDisplay !== "0" ? parseFloat(outDisplay).toFixed(tokenOut.decimals > 10 ? 6 : 4) : "0.00"}
                 </span>
               </div>
               <div
                 className="flex items-center gap-2 px-3 py-2 rounded-xl flex-shrink-0"
                 style={{
-                  background: `${accent}10`,
-                  border: `1px solid ${accent}25`,
+                  background: tokenOut.isNative ? "rgba(212,168,83,0.08)" : `${accent}10`,
+                  border: `1px solid ${tokenOut.isNative ? "rgba(212,168,83,0.15)" : `${accent}25`}`,
                 }}
               >
-                <TokenLogo symbol={pool.token1.symbol.slice(0, 2)} color={accent} />
-                <span className="text-sm font-semibold whitespace-nowrap" style={{ color: accent }}>
-                  {pool.token1.symbol}
+                <TokenLogo symbol={tokenOut.symbol.slice(0, 2)} color={tokenOut.isNative ? "#D4A853" : accent} />
+                <span
+                  className="text-sm font-semibold whitespace-nowrap"
+                  style={{ color: tokenOut.isNative ? "#D4A853" : accent }}
+                >
+                  {tokenOut.symbol}
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── Info panel ──────────────────────────────── */}
+        {/* ── Info panel ─────────────────────────────── */}
         <div
           className="mx-4 mb-4 rounded-xl p-4 space-y-2.5"
-          style={{
-            background: "rgba(255,255,255,0.02)",
-            border: "1px solid rgba(255,255,255,0.04)",
-          }}
+          style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}
         >
-          <InfoRow label="Price Impact" value={priceImpact} />
           <InfoRow label="Slippage Tolerance" value="0.30%" />
-          <InfoRow label="Network Fee" value={`${fee} RITUAL`} />
-          <InfoRow label="Route" value={`RITUAL → ${pool.token1.symbol}`} />
-          <div
-            className="pt-2 mt-1"
-            style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
-          >
+          <InfoRow label="Network Fee" value={`${fee} ${tokenIn.symbol}`} />
+          <InfoRow label="Route" value={`${tokenIn.symbol} → ${tokenOut.symbol}`} />
+          <div className="pt-2 mt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
             <InfoRow
               label="Minimum Received"
-              value={hasAmount && outDisplay !== "0" ? `${outDisplay} ${pool.token1.symbol}` : "—"}
+              value={hasAmount && outDisplay !== "0" ? `${parseFloat(outDisplay).toFixed(tokenOut.decimals > 10 ? 6 : 4)} ${tokenOut.symbol}` : "—"}
               highlight
             />
           </div>
         </div>
 
-        {/* ── No-liquidity warning ─────────────────────── */}
+        {/* ── No-liquidity warning ───────────────────── */}
         {!hasLiquidity && (
           <div
             className="mx-4 mb-2 rounded-xl px-4 py-3 flex items-center gap-3"
-            style={{
-              background: "rgba(248,113,113,0.08)",
-              border: "1px solid rgba(248,113,113,0.25)",
-            }}
+            style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)" }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
               <path d="M8 2L14 13H2L8 2Z" stroke="#F87171" strokeWidth="1.4" strokeLinejoin="round" />
@@ -322,27 +289,24 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
           </div>
         )}
 
-        {/* ── Swap button ─────────────────────────────── */}
+        {/* ── Swap button ────────────────────────────── */}
         <div className="px-4 pb-4">
           <button
             onClick={swap}
             disabled={!hasAmount || isBusy || !hasLiquidity}
-            className="w-full py-4 rounded-xl font-semibold text-sm tracking-wide transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed relative overflow-hidden"
+            className="w-full py-4 rounded-xl font-semibold text-sm tracking-wide transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed"
             style={
               !hasAmount || isBusy || !hasLiquidity
-                ? {
-                    background: "rgba(255,255,255,0.04)",
-                    color: "rgba(255,255,255,0.2)",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                  }
-                : {
-                    background: "linear-gradient(135deg, #D4A853 0%, #F0C060 50%, #C8902A 100%)",
-                    color: "#0D0A03",
-                    boxShadow: "0 4px 20px rgba(212,168,83,0.3), 0 0 0 0.5px rgba(212,168,83,0.4) inset",
-                  }
+                ? { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.06)" }
+                : { background: "linear-gradient(135deg, #D4A853 0%, #F0C060 50%, #C8902A 100%)", color: "#0D0A03", boxShadow: "0 4px 20px rgba(212,168,83,0.3)" }
             }
           >
-            {isBusy ? (
+            {txState === "approving" ? (
+              <span className="flex items-center justify-center gap-2.5">
+                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Approving {tokenIn.symbol}…
+              </span>
+            ) : isBusy ? (
               <span className="flex items-center justify-center gap-2.5">
                 <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                 Confirming in wallet…
@@ -352,13 +316,13 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
             ) : !hasAmount ? (
               "Enter an amount"
             ) : (
-              `Swap RITUAL → ${pool.token1.symbol}`
+              `Swap ${tokenIn.symbol} → ${tokenOut.symbol}`
             )}
           </button>
         </div>
       </div>
 
-      {/* ── Transaction status ─────────────────────── */}
+      {/* ── Transaction status ───────────────────────── */}
       {txState !== "idle" && (
         <div className="mt-3">
           <TxStatusCard
@@ -367,7 +331,7 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
             error={error}
             onReset={reset}
             accent={accent}
-            tokenOut={pool.token1.symbol}
+            tokenOut={tokenOut.symbol}
             outAmount={outDisplay}
           />
         </div>
@@ -376,7 +340,6 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
   );
 }
 
-// ── Inline transaction status card ─────────────────────────────────
 interface TxStatusCardProps {
   txState: string;
   txHash: `0x${string}` | null;
@@ -391,25 +354,15 @@ function TxStatusCard({ txState, txHash, error, onReset, accent, tokenOut, outAm
   if (txState === "idle") return null;
 
   const isSuccess = txState === "success";
-  const isError = txState === "error";
-  const isPending = txState === "swapping";
+  const isError   = txState === "error";
+  const isPending = txState === "swapping" || txState === "approving";
 
   return (
     <div
-      className="rounded-2xl p-4 animate-fade-in"
+      className="rounded-2xl p-4"
       style={{
-        background: isSuccess
-          ? "rgba(74, 222, 128, 0.05)"
-          : isError
-          ? "rgba(248, 113, 113, 0.05)"
-          : "rgba(212, 168, 83, 0.05)",
-        border: `1px solid ${
-          isSuccess
-            ? "rgba(74, 222, 128, 0.15)"
-            : isError
-            ? "rgba(248, 113, 113, 0.15)"
-            : "rgba(212, 168, 83, 0.15)"
-        }`,
+        background: isSuccess ? "rgba(74,222,128,0.05)" : isError ? "rgba(248,113,113,0.05)" : "rgba(212,168,83,0.05)",
+        border: `1px solid ${isSuccess ? "rgba(74,222,128,0.15)" : isError ? "rgba(248,113,113,0.15)" : "rgba(212,168,83,0.15)"}`,
         backdropFilter: "blur(12px)",
       }}
     >
@@ -417,7 +370,9 @@ function TxStatusCard({ txState, txHash, error, onReset, accent, tokenOut, outAm
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full border-2 border-ritual/30 border-t-ritual animate-spin flex-shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-white">Waiting for confirmation</p>
+            <p className="text-sm font-semibold text-white">
+              {txState === "approving" ? "Approving token spend…" : "Waiting for confirmation"}
+            </p>
             <p className="text-xs text-earth-100/40 mt-0.5">Confirm this transaction in your wallet</p>
           </div>
         </div>
@@ -437,11 +392,10 @@ function TxStatusCard({ txState, txHash, error, onReset, accent, tokenOut, outAm
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white">Swap Complete</p>
               <p className="text-xs text-earth-100/50 mt-0.5">
-                You received <span className="text-white font-medium">{outAmount} {tokenOut}</span>
+                You received <span className="text-white font-medium">{parseFloat(outAmount).toFixed(4)} {tokenOut}</span>
               </p>
             </div>
           </div>
-
           <div
             className="rounded-xl p-3 mb-3"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
@@ -449,22 +403,16 @@ function TxStatusCard({ txState, txHash, error, onReset, accent, tokenOut, outAm
             <p className="text-xs text-earth-100/30 mb-1">Transaction Hash</p>
             <a
               href={`https://explorer.ritualfoundation.org/tx/${txHash}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              target="_blank" rel="noopener noreferrer"
               className="text-xs text-ritual/70 hover:text-ritual transition-colors font-mono break-all"
             >
               {txHash.slice(0, 18)}…{txHash.slice(-12)}
             </a>
           </div>
-
           <button
             onClick={onReset}
             className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98]"
-            style={{
-              background: "rgba(212,168,83,0.1)",
-              border: "1px solid rgba(212,168,83,0.2)",
-              color: "#D4A853",
-            }}
+            style={{ background: "rgba(212,168,83,0.1)", border: "1px solid rgba(212,168,83,0.2)", color: "#D4A853" }}
           >
             New Swap
           </button>
@@ -487,15 +435,10 @@ function TxStatusCard({ txState, txHash, error, onReset, accent, tokenOut, outAm
               <p className="text-xs text-red-300/60 mt-0.5 leading-relaxed">{error}</p>
             </div>
           </div>
-
           <button
             onClick={onReset}
             className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98]"
-            style={{
-              background: "rgba(248,113,113,0.1)",
-              border: "1px solid rgba(248,113,113,0.2)",
-              color: "#F87171",
-            }}
+            style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", color: "#F87171" }}
           >
             Try Again
           </button>
