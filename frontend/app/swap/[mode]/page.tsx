@@ -14,6 +14,7 @@ import { useAccount } from "wagmi";
 import SwapInterface from "@/components/SwapInterface";
 import AppNav from "@/components/AppNav";
 import DappFrame from "@/components/DappFrame";
+import { useSwapCount } from "@/hooks/useSwapCount";
 
 export default function ModePage() {
   const params = useParams();
@@ -29,6 +30,7 @@ export default function ModePage() {
 
   const accent = pool.color;
   const queenTitle = QUEEN_TITLES[mode];
+  const { refresh: refreshAchievements } = useSwapCount();
 
   return (
     <DappFrame>
@@ -93,7 +95,7 @@ export default function ModePage() {
 
       {/* ── Swap widget ─────────────────────────────────── */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-4 sm:py-6">
-        <SwapInterface mode={mode} />
+        <SwapInterface mode={mode} onSwapSuccess={refreshAchievements} />
       </main>
 
       <footer

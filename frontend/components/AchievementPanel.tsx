@@ -129,7 +129,7 @@ interface AchievementPanelProps {
 export default function AchievementPanel({ compact = false }: AchievementPanelProps) {
   const { address } = useAccount();
   const { data: ensName } = useEnsName({ address });
-  const { swapCount, loading, refresh } = useSwapCount();
+  const { swapCount, loading, error, refresh } = useSwapCount();
   const { isUnlocked, isClaimed, markClaimed, newlyUnlocked } =
     useAchievements(swapCount, address as Address | undefined);
 
@@ -212,7 +212,7 @@ export default function AchievementPanel({ compact = false }: AchievementPanelPr
         <div>
           <h3 className="text-base font-display font-bold text-white">Achievements</h3>
           <p className="text-xs text-earth-100/40">
-            {loading ? "Loading…" : `${swapCount} swap${swapCount !== 1 ? "s" : ""} on Ritual testnet`}
+            {loading ? "Scanning chain…" : error ? "Scan failed" : `${swapCount} swap${swapCount !== 1 ? "s" : ""} on Ritual testnet`}
           </p>
         </div>
         <button
@@ -223,6 +223,12 @@ export default function AchievementPanel({ compact = false }: AchievementPanelPr
           {loading ? "…" : "↻ Refresh"}
         </button>
       </div>
+
+      {error && (
+        <div className="mb-3 px-3 py-2 rounded-lg text-xs" style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", color: "#F87171" }}>
+          {error}
+        </div>
+      )}
 
       <div className="space-y-3">
         {ACHIEVEMENTS.map((a) => (

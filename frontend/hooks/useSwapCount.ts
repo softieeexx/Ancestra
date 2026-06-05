@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import { Address, parseAbiItem } from "viem";
 import { CONTRACTS } from "@/lib/constants";
+import { ritualChain } from "@/lib/config";
 
 const ALL_PAIR_ADDRESSES: Address[] = [
   CONTRACTS.PAIR_WRITUAL_USDC,
@@ -17,18 +18,22 @@ const ALL_PAIR_ADDRESSES: Address[] = [
   CONTRACTS.PAIR_WRITUAL_SHIB,
   CONTRACTS.PAIR_WRITUAL_DOGE,
 ];
-import { ritualChain } from "@/lib/config";
 
 const SWAP_EVENT = parseAbiItem(
   "event Swap(address indexed sender, uint256 amount0In, uint256 amount1In, uint256 amount0Out, uint256 amount1Out, address indexed to)"
 );
 
+// RPC caps queries at 99,999 blocks. We scan backwards in this chunk size.
+const CHUNK_SIZE = 99_999n;
+// How many chunks to scan back from latest (5 × 100k = 500k blocks ≈ full testnet history)
+const MAX_CHUNKS = 5;
+
 const STORAGE_KEY_PREFIX = "ancestra_swaps_";
 
 export interface SwapRecord {
   txHash: string;
-  poolId: string;
-  timestamp: number;
+  pairAddress: string;
+  blockNumber: number;
 }
 
 function storageKey(address: Address) {
@@ -53,57 +58,81 @@ function saveCache(address: Address, records: SwapRecord[]) {
 export function useSwapCount() {
   const { address } = useAccount();
   const client = usePublicClient({ chainId: ritualChain.id });
-  const [swapCount, setSwapCount] = useState(0);
+  const [swapCount, setSwapCount]   = useState(0);
   const [swapRecords, setSwapRecords] = useState<SwapRecord[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState<string | null>(null);
 
   const fetchSwaps = useCallback(async () => {
     if (!address || !client) return;
 
     setLoading(true);
-    const cached = loadCached(address);
+    setError(null);
+
+    const cached   = loadCached(address);
     const seenHashes = new Set(cached.map((r) => r.txHash));
     const fresh: SwapRecord[] = [];
 
     try {
-      for (const pairAddr of ALL_PAIR_ADDRESSES) {
-        const logs = await client.getLogs({
-          address: pairAddr,
-          event: SWAP_EVENT,
-          args: { to: address },
-          fromBlock: 0n,
-        });
+      // Get current block number
+      const latestBlock = await client.getBlockNumber();
 
-        for (const log of logs) {
-          const hash = log.transactionHash ?? "";
-          if (!seenHashes.has(hash)) {
-            seenHashes.add(hash);
-            fresh.push({
-              txHash: hash,
-              poolId: pairAddr,
-              timestamp: Date.now(),
-            });
+      // Scan backwards in 99,999-block chunks
+      for (let chunk = 0; chunk < MAX_CHUNKS; chunk++) {
+        const toBlock   = latestBlock - BigInt(chunk) * CHUNK_SIZE;
+        const fromBlock = toBlock >= CHUNK_SIZE ? toBlock - CHUNK_SIZE + 1n : 0n;
+
+        if (toBlock < 0n) break;
+
+        // Query all pairs in parallel for this block range
+        const chunkResults = await Promise.allSettled(
+          ALL_PAIR_ADDRESSES.map((pairAddr) =>
+            client.getLogs({
+              address: pairAddr,
+              event: SWAP_EVENT,
+              args: { to: address },
+              fromBlock,
+              toBlock,
+            }).then((logs) => logs.map((log) => ({ log, pairAddr })))
+          )
+        );
+
+        for (const result of chunkResults) {
+          if (result.status !== "fulfilled") continue;
+          for (const { log, pairAddr } of result.value) {
+            const hash = log.transactionHash ?? "";
+            if (hash && !seenHashes.has(hash)) {
+              seenHashes.add(hash);
+              fresh.push({
+                txHash: hash,
+                pairAddress: pairAddr,
+                blockNumber: Number(log.blockNumber ?? 0n),
+              });
+            }
           }
         }
       }
-    } catch (err) {
-      console.error("Failed to fetch swap logs:", err);
+    } catch (err: any) {
+      console.error("useSwapCount fetch failed:", err);
+      setError(err?.message ?? "Failed to fetch swap history");
     }
 
-    const all = [...cached, ...fresh];
+    const all = [...cached, ...fresh].sort((a, b) => a.blockNumber - b.blockNumber);
+    // Deduplicate by txHash (in case cache and fresh overlap)
+    const deduped = Array.from(new Map(all.map((r) => [r.txHash, r])).values());
+
     if (fresh.length > 0) {
-      saveCache(address, all);
+      saveCache(address, deduped);
     }
 
-    setSwapRecords(all);
-    setSwapCount(all.length);
+    setSwapRecords(deduped);
+    setSwapCount(deduped.length);
     setLoading(false);
   }, [address, client]);
 
-  // Fetch on mount and when address changes
   useEffect(() => {
     if (address) {
-      // Load cached count immediately for instant render
+      // Show cached count immediately while fetching fresh
       const cached = loadCached(address);
       setSwapRecords(cached);
       setSwapCount(cached.length);
@@ -114,5 +143,5 @@ export function useSwapCount() {
     }
   }, [address, fetchSwaps]);
 
-  return { swapCount, swapRecords, loading, refresh: fetchSwaps };
+  return { swapCount, swapRecords, loading, error, refresh: fetchSwaps };
 }
