@@ -65,7 +65,7 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
     selectedToken, changeToken,
     modeTokens,
     estimatedOut, fee,
-    txState, txHash, error,
+    txState, txHash, error, actualOut,
     swap, reset,
     hasLiquidity,
   } = useAncestra(mode, onSwapSuccess);
@@ -337,8 +337,9 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
             onReset={reset}
             accent={accent}
             tokenOut={tokenOut.symbol}
-            outAmount={outDisplay}
+            outAmount={actualOut ?? outDisplay}
             outPrecision={outPrecision}
+            isActual={!!actualOut}
           />
         </div>
       )}
@@ -355,9 +356,10 @@ interface TxStatusCardProps {
   tokenOut: string;
   outAmount: string;
   outPrecision: number;
+  isActual?: boolean;
 }
 
-function TxStatusCard({ txState, txHash, error, onReset, accent, tokenOut, outAmount, outPrecision }: TxStatusCardProps) {
+function TxStatusCard({ txState, txHash, error, onReset, accent, tokenOut, outAmount, outPrecision, isActual }: TxStatusCardProps) {
   if (txState === "idle") return null;
   const isSuccess = txState === "success";
   const isError   = txState === "error";
@@ -395,7 +397,11 @@ function TxStatusCard({ txState, txHash, error, onReset, accent, tokenOut, outAm
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white">Swap Complete</p>
               <p className="text-xs text-earth-100/50 mt-0.5">
-                You received <span className="text-white font-medium">{parseFloat(outAmount).toFixed(outPrecision)} {tokenOut}</span>
+                You received{" "}
+                <span className="text-white font-medium">
+                  {isActual ? "" : "~"}{parseFloat(outAmount).toFixed(outPrecision)} {tokenOut}
+                </span>
+                {!isActual && <span className="text-earth-100/30 text-xs"> (confirming…)</span>}
               </p>
             </div>
           </div>

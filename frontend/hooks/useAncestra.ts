@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useAccount, useWriteContract, useReadContract, useSwitchChain, usePublicClient } from "wagmi";
-import { formatUnits, parseUnits, Address } from "viem";
+import { formatUnits, parseUnits, decodeEventLog, parseAbiItem, Address } from "viem";
 import { ritualChain } from "@/lib/config";
 import { PAIR_ABI, ROUTER_ABI, ERC20_ABI } from "@/lib/abi";
 import {
@@ -12,6 +12,10 @@ import {
 } from "@/lib/constants";
 
 export type TxState = "idle" | "approving" | "swapping" | "success" | "error";
+
+const SWAP_EVENT_ABI = parseAbiItem(
+  "event Swap(address indexed sender, uint256 amount0In, uint256 amount1In, uint256 amount0Out, uint256 amount1Out, address indexed to)"
+);
 
 const RITUAL_TOKEN = TOKENS.find(t => t.isNative)!;
 
@@ -39,6 +43,7 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
   const [txState,       setTxState]       = useState<TxState>("idle");
   const [txHash,        setTxHash]        = useState<Address | null>(null);
   const [error,         setError]         = useState<string | null>(null);
+  const [actualOut,     setActualOut]     = useState<string | null>(null);
 
   // Resolve pair address for the selected token
   const pairAddress: Address =
@@ -52,7 +57,7 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
     address: pairAddress,
     abi: PAIR_ABI,
     functionName: "getReserves",
-    query: { enabled: !!pairAddress, refetchInterval: 8000 },
+    query: { enabled: !!pairAddress, refetchInterval: 30_000 },
   });
 
   const res = reserves as [bigint, bigint, number] | undefined;
@@ -146,23 +151,35 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
       const minOut      = expectedOut * 9970n / 10000n;
       const deadline    = deadlineMs();
 
-      // Fetch fees explicitly so MetaMask desktop doesn't fail fee estimation
-      const fees = await publicClient!.estimateFeesPerGas();
+      // Fetch gas price from our own RPC so MetaMask desktop doesn't need to
+      // estimate fees itself (eth_gasPrice is universally supported)
+      let gasPrice: bigint;
+      try {
+        gasPrice = await publicClient!.getGasPrice();
+      } catch {
+        gasPrice = 10_000_000_000n; // 10 gwei fallback
+      }
+
+      // Capture direction/pair context for receipt parsing (closures may drift)
+      const snapPairAddress   = pairAddress;
+      const snapWritualIsT0   = writualIsT0;
+      const snapIsFlipped     = isFlipped;
+      const snapOutDecimals   = tokenOut.decimals;
+
+      let swapHash: Address;
 
       if (!isFlipped) {
         // RITUAL (native) → token: payable swapExactRITUALForTokens
         setTxState("swapping");
-        const hash = await writeContractAsync({
+        swapHash = await writeContractAsync({
           address: CONTRACTS.ROUTER,
           abi: ROUTER_ABI,
           functionName: "swapExactRITUALForTokens",
           args: [minOut, [CONTRACTS.WRITUAL, selectedToken.address], address, deadline],
           value: parsedIn,
           gas: 300000n,
-          maxFeePerGas: fees.maxFeePerGas,
-          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+          gasPrice,
         });
-        setTxHash(hash);
       } else {
         // token → RITUAL: approve + swapExactTokensForRITUAL
         setTxState("approving");
@@ -172,29 +189,58 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
           functionName: "approve",
           args: [CONTRACTS.ROUTER, parsedIn],
           gas: 100000n,
-          maxFeePerGas: fees.maxFeePerGas,
-          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+          gasPrice,
         });
 
         setTxState("swapping");
-        const hash = await writeContractAsync({
+        swapHash = await writeContractAsync({
           address: CONTRACTS.ROUTER,
           abi: ROUTER_ABI,
           functionName: "swapExactTokensForRITUAL",
           args: [parsedIn, minOut, [selectedToken.address, CONTRACTS.WRITUAL], address, deadline],
           gas: 300000n,
-          maxFeePerGas: fees.maxFeePerGas,
-          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+          gasPrice,
         });
-        setTxHash(hash);
       }
 
+      setTxHash(swapHash);
+      setActualOut(null);
       setTxState("success");
       setAmountIn("");
       onSwapSuccess?.();
+
+      // Parse actual received amount from receipt in background
+      publicClient!.waitForTransactionReceipt({ hash: swapHash }).then(receipt => {
+        try {
+          const swapLog = receipt.logs.find(
+            l => l.address.toLowerCase() === snapPairAddress.toLowerCase()
+          );
+          if (!swapLog) return;
+          const { args } = decodeEventLog({
+            abi: [SWAP_EVENT_ABI],
+            data: swapLog.data,
+            topics: swapLog.topics as any,
+          });
+          const { amount0Out, amount1Out } = args as { amount0Out: bigint; amount1Out: bigint };
+          // Which output side depends on which token is WRITUAL and swap direction
+          const received = snapWritualIsT0
+            ? (snapIsFlipped ? amount0Out : amount1Out)
+            : (snapIsFlipped ? amount1Out : amount0Out);
+          setActualOut(formatUnits(received, snapOutDecimals));
+        } catch { /* fall back to estimate */ }
+      }).catch(() => { /* no-op */ });
     } catch (err: any) {
       console.error("Swap failed:", err);
-      setError(err?.shortMessage || err?.message || "Transaction failed");
+      const msg = err?.shortMessage || err?.message || "";
+      const isCircuitBreaker =
+        msg.includes("too many errors") ||
+        msg.includes("resource not available") ||
+        msg.includes("Requested resource not available");
+      setError(
+        isCircuitBreaker
+          ? "MetaMask is temporarily unavailable — wait ~30 seconds and try again, or reconnect via WalletConnect."
+          : msg || "Transaction failed"
+      );
       setTxState("error");
     }
   }, [address, amountIn, chainId, selectedToken, isFlipped, rIn, rOut, hasLiquidity, switchChainAsync, writeContractAsync, onSwapSuccess, tokenIn.decimals]);
@@ -203,6 +249,7 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
     setTxState("idle");
     setTxHash(null);
     setError(null);
+    setActualOut(null);
   }, []);
 
   return {
@@ -212,7 +259,7 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
     selectedToken, changeToken,
     modeTokens,
     estimatedOut, priceImpact, fee,
-    txState, txHash, error,
+    txState, txHash, error, actualOut,
     swap, reset,
     reserve0, reserve1,
     rIn, rOut,

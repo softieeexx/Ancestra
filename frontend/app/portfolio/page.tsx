@@ -2,6 +2,7 @@
 
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import { formatUnits, Address } from "viem";
+import { useState } from "react";
 import AppNav from "@/components/AppNav";
 import DappFrame from "@/components/DappFrame";
 import WalletConnect from "@/components/WalletConnect";
@@ -10,7 +11,7 @@ import { CONTRACTS, POOLS, TOKENS } from "@/lib/constants";
 import { PAIR_ABI, ERC20_ABI } from "@/lib/abi";
 import { ritualChain } from "@/lib/config";
 
-function TokenBalanceRow({ token, address }: { token: typeof TOKENS[number]; address: Address }) {
+function TokenBalanceRow({ token, address, showZero }: { token: typeof TOKENS[number]; address: Address; showZero: boolean }) {
   const { data: nativeBal } = useBalance({ address, chainId: ritualChain.id });
   const { data: erc20Bal }  = useReadContract({
     address: token.isNative ? undefined : token.address,
@@ -20,11 +21,16 @@ function TokenBalanceRow({ token, address }: { token: typeof TOKENS[number]; add
     query: { enabled: !token.isNative },
   });
 
-  const bal     = token.isNative
+  // Don't hide until the balance has actually loaded
+  const loaded = token.isNative ? !!nativeBal : erc20Bal !== undefined;
+
+  const bal        = token.isNative
     ? (nativeBal ? formatUnits(nativeBal.value, 18) : "0")
     : (erc20Bal  ? formatUnits(erc20Bal as bigint, token.decimals) : "0");
-  const display     = parseFloat(bal).toFixed(token.decimals > 10 ? 6 : 4);
-  const hasBalance  = parseFloat(bal) > 0;
+  const display    = parseFloat(bal).toFixed(token.decimals > 10 ? 6 : 4);
+  const hasBalance = parseFloat(bal) > 0;
+
+  if (!showZero && loaded && !hasBalance) return null;
 
   return (
     <div
@@ -102,6 +108,7 @@ function LpPositionRow({ poolKey, address }: { poolKey: keyof typeof POOLS; addr
 
 export default function PortfolioPage() {
   const { isConnected, address } = useAccount();
+  const [showZeroBalances, setShowZeroBalances] = useState(false);
 
   return (
     <DappFrame>
@@ -124,10 +131,19 @@ export default function PortfolioPage() {
             <div className="space-y-8">
               {/* Token balances */}
               <section>
-                <h2 className="text-xs font-semibold text-earth-100/40 mb-3 uppercase tracking-widest">Token Balances</h2>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xs font-semibold text-earth-100/40 uppercase tracking-widest">Token Balances</h2>
+                  <button
+                    onClick={() => setShowZeroBalances(v => !v)}
+                    className="text-xs transition-colors"
+                    style={{ color: "rgba(212,168,83,0.5)" }}
+                  >
+                    {showZeroBalances ? "Hide empty" : "Show all"}
+                  </button>
+                </div>
                 <div className="space-y-2">
                   {TOKENS.map(t => (
-                    <TokenBalanceRow key={t.address} token={t} address={address!} />
+                    <TokenBalanceRow key={t.address} token={t} address={address!} showZero={showZeroBalances} />
                   ))}
                 </div>
               </section>
