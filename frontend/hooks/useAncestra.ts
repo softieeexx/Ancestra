@@ -13,12 +13,14 @@ const RITUAL_TOKEN = TOKENS.find(t => t.isNative)!;
 // Stables selectable on Amina mode
 export const AMINA_STABLES: Token[] = [
   TOKENS.find(t => t.symbol === "USDC")!,
+  TOKENS.find(t => t.symbol === "USDT")!,
   TOKENS.find(t => t.symbol === "DAI")!,
 ];
 
 // Stable address → its WRITUAL pair address
 const STABLE_PAIR: Partial<Record<Address, Address>> = {
   [CONTRACTS.USDC]: CONTRACTS.PAIR_WRITUAL_USDC,
+  [CONTRACTS.USDT]: CONTRACTS.PAIR_WRITUAL_USDT,
   [CONTRACTS.DAI]:  CONTRACTS.PAIR_WRITUAL_DAI,
   [CONTRACTS.WETH]: CONTRACTS.PAIR_WRITUAL_WETH,
 };
@@ -26,6 +28,7 @@ const STABLE_PAIR: Partial<Record<Address, Address>> = {
 // Is WRITUAL token0 in a given pair?
 const WRITUAL_IS_T0: Partial<Record<Address, boolean>> = {
   [CONTRACTS.PAIR_WRITUAL_USDC]: true,
+  [CONTRACTS.PAIR_WRITUAL_USDT]: false, // USDT is token0
   [CONTRACTS.PAIR_WRITUAL_WETH]: true,
   [CONTRACTS.PAIR_WRITUAL_DAI]:  false, // DAI is token0
 };

@@ -124,53 +124,21 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
         }}
       >
         {/* Card header */}
-        <div style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-          <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: accent, boxShadow: `0 0 6px ${accent}` }} />
-              <span className="text-sm font-display font-semibold text-white truncate">{pool.name}</span>
-              <span
-                className="text-xs px-2 py-0.5 rounded-full font-mono flex-shrink-0"
-                style={{ background: `${accent}14`, color: accent, border: `1px solid ${accent}30` }}
-              >
-                {pool.subtitle}
-              </span>
-            </div>
-            <span className="text-xs text-earth-100/30 font-mono flex-shrink-0 hidden sm:inline">Ritual Chain</span>
-          </div>
-
-          {/* Stable selector — Amina mode only */}
-          {aminaStables && (
-            <div
-              className="flex items-center gap-2 px-4 sm:px-5 pb-3"
+        <div
+          className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 gap-2"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: accent, boxShadow: `0 0 6px ${accent}` }} />
+            <span className="text-sm font-display font-semibold text-white truncate">{pool.name}</span>
+            <span
+              className="text-xs px-2 py-0.5 rounded-full font-mono flex-shrink-0"
+              style={{ background: `${accent}14`, color: accent, border: `1px solid ${accent}30` }}
             >
-              <span className="text-xs font-semibold uppercase tracking-widest flex-shrink-0" style={{ color: "rgba(255,255,255,0.25)", fontSize: "0.6rem" }}>
-                Stable
-              </span>
-              <div className="flex gap-1.5">
-                {aminaStables.map(t => {
-                  const isSelected = selectedStable.address === t.address;
-                  return (
-                    <button
-                      key={t.address}
-                      onClick={() => changeStable(t)}
-                      disabled={isBusy}
-                      className="px-3 py-1 rounded-lg text-xs font-bold transition-all hover:opacity-90 active:scale-95"
-                      style={{
-                        background: isSelected ? accent : "rgba(255,255,255,0.06)",
-                        color: isSelected ? "#0D0A03" : "rgba(255,255,255,0.55)",
-                        border: `1px solid ${isSelected ? accent : "rgba(255,255,255,0.10)"}`,
-                        boxShadow: isSelected ? `0 0 12px ${accent}55` : "none",
-                        cursor: isBusy ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      {t.symbol}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+              {pool.subtitle}
+            </span>
+          </div>
+          <span className="text-xs text-earth-100/30 font-mono flex-shrink-0 hidden sm:inline">Ritual Chain</span>
         </div>
 
         <div className="p-4 space-y-1.5">
@@ -243,21 +211,48 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
                   {hasAmount && outDisplay !== "0" ? parseFloat(outDisplay).toFixed(tokenOut.decimals > 10 ? 6 : 4) : "0.00"}
                 </span>
               </div>
-              <div
-                className="flex items-center gap-2 px-3 py-2 rounded-xl flex-shrink-0"
-                style={{
-                  background: tokenOut.isNative ? "rgba(212,168,83,0.08)" : `${accent}10`,
-                  border: `1px solid ${tokenOut.isNative ? "rgba(212,168,83,0.15)" : `${accent}25`}`,
-                }}
-              >
-                <TokenLogo symbol={tokenOut.symbol.slice(0, 2)} color={tokenOut.isNative ? "#D4A853" : accent} />
-                <span
-                  className="text-sm font-semibold whitespace-nowrap"
-                  style={{ color: tokenOut.isNative ? "#D4A853" : accent }}
+              {/* Token out chip — dropdown for Amina, static for others */}
+              {aminaStables && !isFlipped ? (
+                <div className="relative flex-shrink-0">
+                  <select
+                    value={selectedStable.address}
+                    onChange={e => {
+                      const t = aminaStables.find(s => s.address === e.target.value);
+                      if (t) changeStable(t);
+                    }}
+                    disabled={isBusy}
+                    className="appearance-none pr-7 pl-3 py-2 rounded-xl text-sm font-semibold cursor-pointer outline-none"
+                    style={{
+                      background: `${accent}14`,
+                      border: `1px solid ${accent}35`,
+                      color: accent,
+                      minWidth: "92px",
+                    }}
+                  >
+                    {aminaStables.map(t => (
+                      <option key={t.address} value={t.address} style={{ background: "#0D0A03", color: "#fff" }}>
+                        {t.symbol}
+                      </option>
+                    ))}
+                  </select>
+                  <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <path d="M2 3.5L5 6.5L8 3.5" stroke={accent} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              ) : (
+                <div
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl flex-shrink-0"
+                  style={{
+                    background: tokenOut.isNative ? "rgba(212,168,83,0.08)" : `${accent}10`,
+                    border: `1px solid ${tokenOut.isNative ? "rgba(212,168,83,0.15)" : `${accent}25`}`,
+                  }}
                 >
-                  {tokenOut.symbol}
-                </span>
-              </div>
+                  <TokenLogo symbol={tokenOut.symbol.slice(0, 2)} color={tokenOut.isNative ? "#D4A853" : accent} />
+                  <span className="text-sm font-semibold whitespace-nowrap" style={{ color: tokenOut.isNative ? "#D4A853" : accent }}>
+                    {tokenOut.symbol}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

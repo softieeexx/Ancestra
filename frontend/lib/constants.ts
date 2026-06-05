@@ -9,10 +9,12 @@ export const CONTRACTS = {
   ROUTER:    "0xe38fdE07E91cEBccF22BBB719dDdB434238DF721" as Address,
   // Tokens
   USDC:      "0x9Fa1dacB93cBC442DBD2B61450EfF6923Dd0A411" as Address,
+  USDT:      "0x0e477d65a7AEf13830091f4D9B5906E4b5469db6" as Address,
   WETH:      "0xAc037b017f9392D5C19E35A45985798F8aAb004c" as Address,
   DAI:       "0x0309FdE8308fEd7E15b0A37d2818a47e7a6a0206" as Address,
   // Pairs
   PAIR_WRITUAL_USDC: "0x9d90d5789495874eb29B2Ea368ed6a027Aedd14d" as Address,
+  PAIR_WRITUAL_USDT: "0xF31bBAc073da1D401E3d0A014803CF71723031c5" as Address,
   PAIR_WRITUAL_WETH: "0x925047592D27E417490279F40Dd7EcFE0B3F6cB6" as Address,
   PAIR_WRITUAL_DAI:  "0xde994445B3feF6Ed06c8fb673c723c8F7732E356" as Address,
 } as const;
@@ -52,6 +54,13 @@ export const TOKENS: Token[] = [
     name: "USD Coin",
     decimals: 6,
     logoColor: "#4ADE80",
+  },
+  {
+    address: CONTRACTS.USDT,
+    symbol: "USDT",
+    name: "Tether USD",
+    decimals: 6,
+    logoColor: "#26A17B",
   },
   {
     address: CONTRACTS.WETH,
