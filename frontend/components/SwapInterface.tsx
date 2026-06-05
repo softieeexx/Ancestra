@@ -124,21 +124,53 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
         }}
       >
         {/* Card header */}
-        <div
-          className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 gap-2"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: accent, boxShadow: `0 0 6px ${accent}` }} />
-            <span className="text-sm font-display font-semibold text-white truncate">{pool.name}</span>
-            <span
-              className="text-xs px-2 py-0.5 rounded-full font-mono flex-shrink-0"
-              style={{ background: `${accent}14`, color: accent, border: `1px solid ${accent}30` }}
-            >
-              {pool.subtitle}
-            </span>
+        <div style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+          <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: accent, boxShadow: `0 0 6px ${accent}` }} />
+              <span className="text-sm font-display font-semibold text-white truncate">{pool.name}</span>
+              <span
+                className="text-xs px-2 py-0.5 rounded-full font-mono flex-shrink-0"
+                style={{ background: `${accent}14`, color: accent, border: `1px solid ${accent}30` }}
+              >
+                {pool.subtitle}
+              </span>
+            </div>
+            <span className="text-xs text-earth-100/30 font-mono flex-shrink-0 hidden sm:inline">Ritual Chain</span>
           </div>
-          <span className="text-xs text-earth-100/30 font-mono flex-shrink-0 hidden sm:inline">Ritual Chain</span>
+
+          {/* Stable selector — Amina mode only */}
+          {aminaStables && (
+            <div
+              className="flex items-center gap-2 px-4 sm:px-5 pb-3"
+            >
+              <span className="text-xs font-semibold uppercase tracking-widest flex-shrink-0" style={{ color: "rgba(255,255,255,0.25)", fontSize: "0.6rem" }}>
+                Stable
+              </span>
+              <div className="flex gap-1.5">
+                {aminaStables.map(t => {
+                  const isSelected = selectedStable.address === t.address;
+                  return (
+                    <button
+                      key={t.address}
+                      onClick={() => changeStable(t)}
+                      disabled={isBusy}
+                      className="px-3 py-1 rounded-lg text-xs font-bold transition-all hover:opacity-90 active:scale-95"
+                      style={{
+                        background: isSelected ? accent : "rgba(255,255,255,0.06)",
+                        color: isSelected ? "#0D0A03" : "rgba(255,255,255,0.55)",
+                        border: `1px solid ${isSelected ? accent : "rgba(255,255,255,0.10)"}`,
+                        boxShadow: isSelected ? `0 0 12px ${accent}55` : "none",
+                        cursor: isBusy ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {t.symbol}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="p-4 space-y-1.5">
@@ -201,28 +233,6 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
             className="rounded-xl p-4"
             style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
           >
-            {/* Stable selector — Amina mode only */}
-            {aminaStables && (
-              <div className="flex items-center gap-1.5 mb-3">
-                <span className="text-xs text-earth-100/30 mr-0.5">Stable:</span>
-                {aminaStables.map(t => (
-                  <button
-                    key={t.address}
-                    onClick={() => changeStable(t)}
-                    disabled={isBusy}
-                    className="px-2.5 py-0.5 rounded-lg text-xs font-semibold transition-all"
-                    style={{
-                      background: selectedStable.address === t.address ? `${accent}22` : "rgba(255,255,255,0.04)",
-                      border: `1px solid ${selectedStable.address === t.address ? `${accent}50` : "rgba(255,255,255,0.08)"}`,
-                      color: selectedStable.address === t.address ? accent : "rgba(255,255,255,0.35)",
-                    }}
-                  >
-                    {t.symbol}
-                  </button>
-                ))}
-              </div>
-            )}
-
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs text-earth-100/35 tracking-wide">You Receive</span>
               <span className="text-xs text-earth-100/25">Estimated</span>
