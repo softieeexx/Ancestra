@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { ReactNode } from "react";
 
 const GOLD = "rgba(175,138,48,0.58)";
@@ -15,7 +16,17 @@ const cornerBase: React.CSSProperties = {
 
 export default function DappFrame({ children }: { children: ReactNode }) {
   return (
-    <div style={{ background: "#060507", minHeight: "100vh", padding: "6px" }}>
+    <div style={{ position: "relative", minHeight: "100vh", padding: "6px", background: "#060507", overflow: "hidden" }}>
+      {/* ── Background image on outer matte ── */}
+      <Image
+        src="/landing-bg.jpeg"
+        alt=""
+        fill
+        priority
+        className="object-cover object-center"
+        style={{ zIndex: 0, opacity: 0.18 }}
+      />
+
       {/* ── Viewport-edge frame bars ── */}
       <div style={{ ...barBase, top: 0,    left: 0, right:  0, height: "2px" }} />
       <div style={{ ...barBase, bottom: 0, left: 0, right:  0, height: "2px" }} />
@@ -32,15 +43,17 @@ export default function DappFrame({ children }: { children: ReactNode }) {
       <div
         style={{
           position: "relative",
+          zIndex: 1,
           display: "flex",
           flexDirection: "column",
           minHeight: "calc(100vh - 12px)",
-          background: "#0e0c09",
+          background: "rgba(12,9,6,0.78)",
+          backdropFilter: "blur(2px)",
           border: "1px solid rgba(178,140,50,0.20)",
           boxShadow:
             "0 0 0 1px rgba(178,140,50,0.04), " +
-            "0 12px 80px rgba(0,0,0,0.9), " +
-            "0 0 60px rgba(178,140,50,0.06)",
+            "0 12px 80px rgba(0,0,0,0.7), " +
+            "0 0 60px rgba(178,140,50,0.08)",
           borderRadius: "2px",
         }}
       >
