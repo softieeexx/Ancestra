@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-
 import { ConnectKitButton } from "connectkit";
 import { useRouter } from "next/navigation";
 
@@ -26,7 +25,6 @@ function DiamondIcon() {
     </svg>
   );
 }
-
 
 function ConnectWalletButton() {
   const router = useRouter();
@@ -64,7 +62,15 @@ const FEATURES = [
 
 export default function HomePage() {
   return (
-    <div className="hero-grain relative w-full h-screen overflow-hidden" style={{ background: "#0a0a0a" }}>
+    /*
+     * min-h-screen + flex-col: lets the page grow on mobile when feature
+     * cards stack vertically. overflow-x-hidden prevents horizontal scroll
+     * caused by letter-spaced text or oversized headings on narrow viewports.
+     */
+    <div
+      className="hero-grain relative w-full min-h-screen flex flex-col overflow-x-hidden"
+      style={{ background: "#0a0a0a" }}
+    >
 
       {/* 0 ─ Background image */}
       <Image
@@ -114,11 +120,11 @@ export default function HomePage() {
         }}
       />
 
-      {/* 6 ─ UI */}
-      <div className="relative flex flex-col h-full" style={{ zIndex: 4 }}>
+      {/* 6 ─ UI — flex-1 so it fills the full min-h-screen space */}
+      <div className="relative flex-1 flex flex-col" style={{ zIndex: 4 }}>
 
         {/* ── Navbar ────────────────────────────────── */}
-        <nav className="flex items-center justify-between px-8 md:px-12 py-5 flex-shrink-0">
+        <nav className="flex items-center justify-between px-6 md:px-8 lg:px-12 py-5 flex-shrink-0">
           <div className="flex items-center gap-3">
             <LogoIcon />
             <span
@@ -128,18 +134,17 @@ export default function HomePage() {
               ANCESTRA
             </span>
           </div>
-
         </nav>
 
         {/* ── Hero content ──────────────────────────── */}
-        <main className="flex-1 flex items-center px-8 md:px-12 lg:px-20 pb-4">
-          <div style={{ maxWidth: "540px" }}>
+        <main className="flex-1 flex items-center px-6 md:px-12 lg:px-20 pb-4">
+          <div className="w-full" style={{ maxWidth: "540px" }}>
 
-            {/* Headline */}
+            {/* Headline — clamp min reduced so it never overflows narrow screens */}
             <h1
               className="font-cinzel font-black text-white select-none"
               style={{
-                fontSize: "clamp(4.2rem, 11.5vw, 10rem)",
+                fontSize: "clamp(2.2rem, 11.5vw, 10rem)",
                 lineHeight: 0.88,
                 letterSpacing: "0.01em",
                 marginBottom: "1.6rem",
@@ -149,13 +154,16 @@ export default function HomePage() {
               ANCESTRA
             </h1>
 
-            {/* Gold subtitle */}
+            {/*
+             * Gold subtitle — letterSpacing reduced on mobile to prevent
+             * horizontal overflow. Tailwind responsive class overrides the
+             * inline value at md+.
+             */}
             <p
-              className="font-rajdhani font-semibold mb-5"
+              className="font-rajdhani font-semibold mb-5 tracking-[0.18em] md:tracking-[0.44em]"
               style={{
                 color: "#c9a84c",
                 fontSize: "0.72rem",
-                letterSpacing: "0.44em",
               }}
             >
               ANCESTRAL.&nbsp;&nbsp;RITUAL-CENTRIC.
@@ -185,11 +193,10 @@ export default function HomePage() {
                 style={{ background: "#3ddc84" }}
               />
               <span
-                className="font-rajdhani font-medium"
+                className="font-rajdhani font-medium tracking-[0.3em]"
                 style={{
                   color: "rgba(255,255,255,0.38)",
                   fontSize: "0.7rem",
-                  letterSpacing: "0.3em",
                 }}
               >
                 BUILT ON RITUAL TESTNET
@@ -209,17 +216,24 @@ export default function HomePage() {
                 "linear-gradient(90deg, rgba(201,168,76,0.65) 0%, rgba(201,168,76,0.4) 50%, rgba(201,168,76,0.1) 100%)",
             }}
           />
+
+          {/*
+           * grid-cols-1 on mobile stacks cards vertically.
+           * md:grid-cols-3 restores the original 3-column desktop layout.
+           */}
           <div
-            className="grid grid-cols-3"
+            className="grid grid-cols-1 md:grid-cols-3"
             style={{ background: "rgba(10,8,14,0.92)", backdropFilter: "blur(18px)" }}
           >
             {FEATURES.map((f, i) => (
               <div
                 key={f.title}
-                className="flex items-start gap-3.5 px-8 py-6"
-                style={{
-                  borderRight: i < 2 ? "1px solid rgba(201,168,76,0.15)" : "none",
-                }}
+                className={`flex items-start gap-3.5 px-8 py-6 ${
+                  i < FEATURES.length - 1
+                    ? "border-b md:border-b-0 md:border-r"
+                    : ""
+                }`}
+                style={{ borderColor: "rgba(201,168,76,0.15)" }}
               >
                 <div className="flex-shrink-0 mt-0.5">
                   <DiamondIcon />
