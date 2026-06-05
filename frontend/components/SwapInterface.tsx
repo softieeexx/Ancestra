@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAncestra } from "@/hooks/useAncestra";
 import { POOLS, ModeId } from "@/lib/constants";
 import { useAccount, useBalance, useReadContract } from "wagmi";
@@ -71,6 +71,7 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
   } = useAncestra(mode, onSwapSuccess);
 
   const [arrowSpin, setArrowSpin] = useState(false);
+  const [toastState, setToastState] = useState<"hidden" | "visible" | "dismissing">("hidden");
 
   const { data: ritualBalance } = useBalance({ address, chainId: ritualChain.id });
 
@@ -95,6 +96,21 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
 
   // Precision for output display
   const outPrecision = tokenOut.decimals <= 6 ? 4 : tokenOut.decimals === 9 ? 6 : 6;
+
+  // Floating success toast: auto-dismiss after 5 s
+  useEffect(() => {
+    if (txState === "success" && txHash) {
+      setToastState("visible");
+      const timer = setTimeout(() => {
+        setToastState("dismissing");
+        setTimeout(() => {
+          reset();
+          setToastState("hidden");
+        }, 600);
+      }, 5000);
+      return () => { clearTimeout(timer); };
+    }
+  }, [txState, txHash, reset]);
 
   const handleArrow = useCallback(() => {
     setArrowSpin(true);
@@ -327,8 +343,8 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
         </div>
       </div>
 
-      {/* ── Transaction status ───────────────────────── */}
-      {txState !== "idle" && (
+      {/* ── Transaction status (pending/error inline) ── */}
+      {(txState !== "idle" && txState !== "success") && (
         <div className="mt-3">
           <TxStatusCard
             txState={txState}
@@ -342,6 +358,77 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
             isActual={!!actualOut}
           />
         </div>
+      )}
+
+      {/* ── Floating success toast ──────────────────── */}
+      {toastState !== "hidden" && (
+        <SwapSuccessToast
+          txHash={txHash}
+          tokenOut={tokenOut.symbol}
+          outAmount={actualOut ?? outDisplay}
+          outPrecision={outPrecision}
+          isActual={!!actualOut}
+          dismissing={toastState === "dismissing"}
+        />
+      )}
+    </div>
+  );
+}
+
+interface SwapSuccessToastProps {
+  txHash: `0x${string}` | null;
+  tokenOut: string;
+  outAmount: string;
+  outPrecision: number;
+  isActual: boolean;
+  dismissing: boolean;
+}
+
+function SwapSuccessToast({ txHash, tokenOut, outAmount, outPrecision, isActual, dismissing }: SwapSuccessToastProps) {
+  return (
+    <div
+      className="fixed bottom-4 right-4 z-50"
+      style={{
+        transition: "all 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
+        transform: dismissing ? "translateY(-30px) scale(0.95)" : "translateY(0) scale(1)",
+        opacity: dismissing ? 0 : 1,
+        pointerEvents: dismissing ? "none" : "auto",
+        background: "rgba(13, 10, 3, 0.92)",
+        backdropFilter: "blur(24px)",
+        border: "1px solid rgba(74,222,128,0.25)",
+        borderRadius: "16px",
+        padding: "16px 20px",
+        minWidth: "300px",
+        maxWidth: "380px",
+        boxShadow: "0 8px 40px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(74,222,128,0.1) inset",
+      }}
+    >
+      <div className="flex items-center gap-3 mb-2">
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.3)" }}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2.5 7L5.5 10L11.5 4" stroke="#4ADE80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <p className="text-sm font-semibold text-white">Swap Complete</p>
+      </div>
+      <p className="text-xs text-earth-100/50 mb-2">
+        Received{" "}
+        <span className="text-white font-medium">
+          {isActual ? "" : "~"}{parseFloat(outAmount).toFixed(outPrecision)} {tokenOut}
+        </span>
+      </p>
+      {txHash && (
+        <a
+          href={`https://explorer.ritualfoundation.org/tx/${txHash}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-ritual/70 hover:text-ritual transition-colors font-mono inline-flex items-center gap-1"
+        >
+          View on Explorer ↗
+        </a>
       )}
     </div>
   );
