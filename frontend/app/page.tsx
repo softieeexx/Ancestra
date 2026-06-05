@@ -289,6 +289,38 @@ function ConnectWalletButton() {
   );
 }
 
+function EnterButton() {
+  const router = useRouter();
+  return (
+    <button
+      onClick={() => router.push("/swap")}
+      className="font-rajdhani font-semibold uppercase transition-all duration-200"
+      style={{
+        border: "1px solid rgba(201,168,76,0.3)",
+        color: "rgba(201,168,76,0.55)",
+        background: "transparent",
+        padding: "10px 44px",
+        fontSize: "0.68rem",
+        letterSpacing: "0.34em",
+        cursor: "pointer",
+        minWidth: "180px",
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = "rgba(201,168,76,0.7)";
+        e.currentTarget.style.color = "#c9a84c";
+        e.currentTarget.style.background = "rgba(201,168,76,0.06)";
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = "rgba(201,168,76,0.3)";
+        e.currentTarget.style.color = "rgba(201,168,76,0.55)";
+        e.currentTarget.style.background = "transparent";
+      }}
+    >
+      Enter App
+    </button>
+  );
+}
+
 const FEATURES = [
   { title: "RITUAL-CENTRIC",   desc: "All pools are RITUAL pairs" },
   { title: "ANCESTRAL DESIGN", desc: "Rooted in culture, built for the future" },
@@ -409,12 +441,13 @@ export default function HomePage() {
         </nav>
 
         {/* Hero */}
-        <main className="flex-1 flex items-center px-6 md:px-12 lg:px-20 pb-4">
-          <div className="w-full" style={{ maxWidth: "540px" }}>
+        <main className="flex-1 flex flex-col items-center justify-center px-6 pb-6">
+          <div className="flex flex-col items-center text-center w-full" style={{ maxWidth: "560px" }}>
 
             <h1
               className="font-cinzel font-black text-white select-none"
               style={{
+                fontFamily: '"Trajan Pro", "Cinzel", serif',
                 fontSize: "clamp(2.2rem, 11.5vw, 10rem)",
                 lineHeight: 0.88,
                 letterSpacing: "0.01em",
@@ -438,11 +471,10 @@ export default function HomePage() {
             </p>
 
             <p
-              className="mb-9 leading-relaxed"
+              className="mb-9 leading-relaxed max-w-sm"
               style={{
                 color: "#cccccc",
                 fontSize: "1.05rem",
-                maxWidth: "370px",
                 fontFamily: "Inter, sans-serif",
                 fontWeight: 300,
                 animation: "hero-fade-up 1.1s 0.65s ease-out both",
@@ -453,6 +485,13 @@ export default function HomePage() {
 
             <div style={{ animation: "hero-fade-up 1.1s 0.86s ease-out both" }}>
               <ConnectWalletButton />
+            </div>
+
+            <div
+              className="mt-3"
+              style={{ animation: "hero-fade-up 1.1s 0.98s ease-out both" }}
+            >
+              <EnterButton />
             </div>
 
             <div
