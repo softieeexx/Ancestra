@@ -4,6 +4,12 @@ import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { POOLS, ModeId } from "@/lib/constants";
+
+const QUEEN_TITLES: Record<ModeId, { title: string; font: string; color: string }> = {
+  amina:     { title: "Queen of Zaria",        font: "Cinzel",   color: "#4ADE80" },
+  nefertiti: { title: "Queen of Egypt",         font: "Cinzel",   color: "#FBBF24" },
+  yaa:       { title: "Queen Mother of Ejisu",  font: "Rajdhani", color: "#F87171" },
+};
 import { useAccount } from "wagmi";
 import SwapInterface from "@/components/SwapInterface";
 import AppNav from "@/components/AppNav";
@@ -22,6 +28,7 @@ export default function ModePage() {
   if (!pool || !isConnected) return null;
 
   const accent = pool.color;
+  const queenTitle = QUEEN_TITLES[mode];
 
   return (
     <DappFrame>
@@ -65,6 +72,23 @@ export default function ModePage() {
             {pool.subtitle.toUpperCase()}
           </span>
         </div>
+      </div>
+
+      {/* ── Queen title ──────────────────────────────────── */}
+      <div className="relative z-10 flex justify-center pb-1">
+        <p
+          style={{
+            fontFamily: queenTitle.font === "Rajdhani" ? "Rajdhani, sans-serif" : "Cinzel, serif",
+            color: queenTitle.color,
+            fontSize: queenTitle.font === "Rajdhani" ? "0.78rem" : "0.7rem",
+            letterSpacing: queenTitle.font === "Rajdhani" ? "0.18em" : "0.12em",
+            opacity: 0.7,
+            fontStyle: queenTitle.font === "Cinzel" ? "italic" : "normal",
+            fontWeight: queenTitle.font === "Rajdhani" ? 600 : 400,
+          }}
+        >
+          {queenTitle.title}
+        </p>
       </div>
 
       {/* ── Swap widget ─────────────────────────────────── */}

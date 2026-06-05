@@ -16,6 +16,10 @@ export const CONTRACTS = {
   MON:       "0x3Fa6711b444E1235cd4503655f3F0E7c75089D5E" as Address,
   SOL:       "0x17f8dAC69dc27C6ec37D47baaFf7E55d3a8327a0" as Address,
   BTC:       "0x2Ae6c1e1e62c0bC6F7a05b48D7582d837D59f188" as Address,
+  // Degen tokens
+  PEPE:      "0xbaEADBaFFA5415628B9b5e5Ca26c244Ec4457050" as Address,
+  SHIB:      "0x398F639320addBAB62424013f814605139dDb475" as Address,
+  DOGE:      "0xD5279549141C15C09e65d9A5A1cc571Be10770c1" as Address,
   // Stable pairs
   PAIR_WRITUAL_USDC: "0x9d90d5789495874eb29B2Ea368ed6a027Aedd14d" as Address,
   PAIR_WRITUAL_USDT: "0xF31bBAc073da1D401E3d0A014803CF71723031c5" as Address,
@@ -25,6 +29,10 @@ export const CONTRACTS = {
   PAIR_WRITUAL_MON:  "0x43F29692ba8F6C320576E2c2ea9fDEE0a67A3561" as Address,
   PAIR_WRITUAL_SOL:  "0x4f25057ebA6cF68C1200f24bf285A324efD82f1E" as Address,
   PAIR_WRITUAL_BTC:  "0x132BD619721dd5E49806FF8aFeC683591b9e1c1a" as Address,
+  // Degen pairs
+  PAIR_WRITUAL_PEPE: "0xF89BbCC50A117DC11975A10c5E6B478c3e1bFe3b" as Address,
+  PAIR_WRITUAL_SHIB: "0xb4051c1d208192fc788EB37d9bF407016694e637" as Address,
+  PAIR_WRITUAL_DOGE: "0x67801420564322f68699cf42674EaBFe1dAE5Aa6" as Address,
 } as const;
 
 // ── Native RITUAL token (pseudo-address for native) ──────────────────────────
@@ -50,6 +58,9 @@ export const TOKENS: Token[] = [
   { address: CONTRACTS.MON,  symbol: "MON",     name: "Monad",            decimals: 18, logoColor: "#836EF9" },
   { address: CONTRACTS.SOL,  symbol: "SOL",     name: "Solana",           decimals: 9,  logoColor: "#9945FF" },
   { address: CONTRACTS.BTC,  symbol: "BTC",     name: "Bitcoin",          decimals: 8,  logoColor: "#F7931A" },
+  { address: CONTRACTS.PEPE, symbol: "PEPE",    name: "Pepe",             decimals: 18, logoColor: "#4FB846" },
+  { address: CONTRACTS.SHIB, symbol: "SHIB",    name: "Shiba Inu",        decimals: 18, logoColor: "#FF6B00" },
+  { address: CONTRACTS.DOGE, symbol: "DOGE",    name: "Dogecoin",         decimals: 8,  logoColor: "#C2A633" },
 ];
 
 // ── Pool/pair list ───────────────────────────────────────────────────────────
@@ -92,12 +103,12 @@ export const POOLS: Record<ModeId, PoolInfo> = {
   },
   yaa: {
     id: "yaa",
-    pairAddress: CONTRACTS.PAIR_WRITUAL_DAI,
+    pairAddress: CONTRACTS.PAIR_WRITUAL_PEPE,
     token0: WRITUAL_TOKEN,
-    token1: DAI_TOKEN,
+    token1: TOKENS[9], // PEPE placeholder — overridden by selectedToken in hook
     name: "Yaa Asantewa",
-    subtitle: "Alt Mode",
-    description: "WRITUAL / DAI",
+    subtitle: "Degen Mode",
+    description: "WRITUAL / degen",
     color: "#F87171",
   },
 };
@@ -120,6 +131,13 @@ export const NEFERTITI_TOKENS: Token[] = [
   TOKENS.find(t => t.symbol === "BTC")!,
 ];
 
+// Yaa Asantewa: degen tokens
+export const YAA_TOKENS: Token[] = [
+  TOKENS.find(t => t.symbol === "PEPE")!,
+  TOKENS.find(t => t.symbol === "SHIB")!,
+  TOKENS.find(t => t.symbol === "DOGE")!,
+];
+
 // ── Pair address lookup by token address ─────────────────────────────────────
 export const TOKEN_PAIR: Partial<Record<Address, Address>> = {
   [CONTRACTS.USDC]: CONTRACTS.PAIR_WRITUAL_USDC,
@@ -129,6 +147,9 @@ export const TOKEN_PAIR: Partial<Record<Address, Address>> = {
   [CONTRACTS.MON]:  CONTRACTS.PAIR_WRITUAL_MON,
   [CONTRACTS.SOL]:  CONTRACTS.PAIR_WRITUAL_SOL,
   [CONTRACTS.BTC]:  CONTRACTS.PAIR_WRITUAL_BTC,
+  [CONTRACTS.PEPE]: CONTRACTS.PAIR_WRITUAL_PEPE,
+  [CONTRACTS.SHIB]: CONTRACTS.PAIR_WRITUAL_SHIB,
+  [CONTRACTS.DOGE]: CONTRACTS.PAIR_WRITUAL_DOGE,
 };
 
 // ── Is WRITUAL token0 in each pair? (from on-chain token0() call) ─────────────
@@ -141,6 +162,9 @@ export const WRITUAL_IS_TOKEN0: Partial<Record<Address, boolean>> = {
   [CONTRACTS.PAIR_WRITUAL_MON]:  false,  // MON is token0
   [CONTRACTS.PAIR_WRITUAL_SOL]:  false,  // SOL is token0
   [CONTRACTS.PAIR_WRITUAL_BTC]:  false,  // BTC is token0
+  [CONTRACTS.PAIR_WRITUAL_PEPE]: true,   // WRITUAL is token0
+  [CONTRACTS.PAIR_WRITUAL_SHIB]: false,  // SHIB is token0
+  [CONTRACTS.PAIR_WRITUAL_DOGE]: true,   // WRITUAL is token0
 };
 
 // Ritual Chain block timestamp is in milliseconds

@@ -12,12 +12,16 @@ const ALL_POOLS = [
   // Amina — stables
   { label: "RITUAL / USDC", pair: CONTRACTS.PAIR_WRITUAL_USDC, t0: "RITUAL", t1: "USDC", d0: 18, d1: 6,  color: "#4ADE80", mode: "amina"     },
   { label: "RITUAL / USDT", pair: CONTRACTS.PAIR_WRITUAL_USDT, t0: "RITUAL", t1: "USDT", d0: 18, d1: 6,  color: "#26A17B", mode: "amina"     },
-  { label: "RITUAL / DAI",  pair: CONTRACTS.PAIR_WRITUAL_DAI,  t0: "RITUAL", t1: "DAI",  d0: 18, d1: 18, color: "#F472B6", mode: "yaa"       },
+  { label: "RITUAL / DAI",  pair: CONTRACTS.PAIR_WRITUAL_DAI,  t0: "RITUAL", t1: "DAI",  d0: 18, d1: 18, color: "#F472B6", mode: "amina"     },
   // Nefertiti — crypto
   { label: "RITUAL / ETH",  pair: CONTRACTS.PAIR_WRITUAL_WETH, t0: "RITUAL", t1: "ETH",  d0: 18, d1: 18, color: "#627EEA", mode: "nefertiti" },
   { label: "RITUAL / MON",  pair: CONTRACTS.PAIR_WRITUAL_MON,  t0: "RITUAL", t1: "MON",  d0: 18, d1: 18, color: "#836EF9", mode: "nefertiti" },
   { label: "RITUAL / SOL",  pair: CONTRACTS.PAIR_WRITUAL_SOL,  t0: "RITUAL", t1: "SOL",  d0: 18, d1: 9,  color: "#9945FF", mode: "nefertiti" },
   { label: "RITUAL / BTC",  pair: CONTRACTS.PAIR_WRITUAL_BTC,  t0: "RITUAL", t1: "BTC",  d0: 18, d1: 8,  color: "#F7931A", mode: "nefertiti" },
+  // Yaa — degen
+  { label: "RITUAL / PEPE", pair: CONTRACTS.PAIR_WRITUAL_PEPE, t0: "RITUAL", t1: "PEPE", d0: 18, d1: 18, color: "#4FB846", mode: "yaa"       },
+  { label: "RITUAL / SHIB", pair: CONTRACTS.PAIR_WRITUAL_SHIB, t0: "RITUAL", t1: "SHIB", d0: 18, d1: 18, color: "#FF6B00", mode: "yaa"       },
+  { label: "RITUAL / DOGE", pair: CONTRACTS.PAIR_WRITUAL_DOGE, t0: "RITUAL", t1: "DOGE", d0: 18, d1: 8,  color: "#C2A633", mode: "yaa"       },
 ] as const;
 
 function PoolRow({ pool }: { pool: typeof ALL_POOLS[number] }) {
@@ -157,7 +161,7 @@ export default function PoolsPage() {
                 Amina · Stables
               </span>
             </div>
-            {ALL_POOLS.filter(p => p.mode === "amina" || p.t1 === "DAI").map(p => (
+            {ALL_POOLS.filter(p => p.mode === "amina").map(p => (
               <PoolRow key={p.pair} pool={p} />
             ))}
 
@@ -168,6 +172,16 @@ export default function PoolsPage() {
               </span>
             </div>
             {ALL_POOLS.filter(p => p.mode === "nefertiti").map(p => (
+              <PoolRow key={p.pair} pool={p} />
+            ))}
+
+            {/* Section: Yaa Asantewa — Degen */}
+            <div className="px-4 pt-4 pb-1">
+              <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#F8717160" }}>
+                Yaa Asantewa · Degen
+              </span>
+            </div>
+            {ALL_POOLS.filter(p => p.mode === "yaa").map(p => (
               <PoolRow key={p.pair} pool={p} />
             ))}
 

@@ -273,8 +273,15 @@ function RemoveLiquidity({ address }: { address: Address }) {
 
 const FAUCET_TOKENS = [
   { address: CONTRACTS.USDC, symbol: "USDC", color: "#4ADE80", name: "USD Coin" },
-  { address: CONTRACTS.WETH, symbol: "WETH", color: "#FBBF24", name: "Wrapped Ether" },
-  { address: CONTRACTS.DAI,  symbol: "DAI",  color: "#F87171", name: "Dai Stablecoin" },
+  { address: CONTRACTS.USDT, symbol: "USDT", color: "#26A17B", name: "Tether USD" },
+  { address: CONTRACTS.DAI,  symbol: "DAI",  color: "#F472B6", name: "Dai Stablecoin" },
+  { address: CONTRACTS.WETH, symbol: "ETH",  color: "#627EEA", name: "Ethereum" },
+  { address: CONTRACTS.MON,  symbol: "MON",  color: "#836EF9", name: "Monad" },
+  { address: CONTRACTS.SOL,  symbol: "SOL",  color: "#9945FF", name: "Solana" },
+  { address: CONTRACTS.BTC,  symbol: "BTC",  color: "#F7931A", name: "Bitcoin" },
+  { address: CONTRACTS.PEPE, symbol: "PEPE", color: "#4FB846", name: "Pepe" },
+  { address: CONTRACTS.SHIB, symbol: "SHIB", color: "#FF6B00", name: "Shiba Inu" },
+  { address: CONTRACTS.DOGE, symbol: "DOGE", color: "#C2A633", name: "Dogecoin" },
 ] as const;
 
 function FaucetPanel({ address }: { address: Address }) {

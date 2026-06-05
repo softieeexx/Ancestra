@@ -5,6 +5,7 @@ import { formatUnits, Address } from "viem";
 import AppNav from "@/components/AppNav";
 import DappFrame from "@/components/DappFrame";
 import WalletConnect from "@/components/WalletConnect";
+import AchievementPanel from "@/components/AchievementPanel";
 import { CONTRACTS, POOLS, TOKENS } from "@/lib/constants";
 import { PAIR_ABI, ERC20_ABI } from "@/lib/abi";
 import { ritualChain } from "@/lib/config";
@@ -142,13 +143,19 @@ export default function PortfolioPage() {
                 <p className="text-xs text-earth-100/25 mt-3 text-center">Pools with zero LP balance are hidden</p>
               </section>
 
+              {/* Achievements */}
+              <section>
+                <h2 className="text-xs font-semibold text-earth-100/40 mb-3 uppercase tracking-widest">Achievement Cards</h2>
+                <AchievementPanel />
+              </section>
+
               {/* Faucet hint */}
               <div className="rounded-xl p-4" style={{ background: "rgba(212,168,83,0.05)", border: "1px solid rgba(212,168,83,0.10)" }}>
                 <p className="text-xs text-ritual/70 font-semibold mb-1">Need testnet tokens?</p>
                 <p className="text-xs text-earth-100/40 leading-relaxed">
-                  USDC, WETH, and DAI are mock tokens — use the{" "}
+                  All mock tokens can be claimed for free — use the{" "}
                   <a href="/liquidity" className="text-ritual/70 hover:text-ritual transition-colors">Faucet tab</a>{" "}
-                  on the Liquidity page to mint 1,000 of each.
+                  on the Liquidity page to mint 1,000 of each token.
                 </p>
               </div>
             </div>

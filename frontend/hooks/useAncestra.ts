@@ -6,7 +6,7 @@ import { formatUnits, parseUnits, Address } from "viem";
 import { PAIR_ABI, ROUTER_ABI, ERC20_ABI } from "@/lib/abi";
 import {
   POOLS, CONTRACTS, TOKENS, TOKEN_PAIR, WRITUAL_IS_TOKEN0,
-  AMINA_TOKENS, NEFERTITI_TOKENS,
+  AMINA_TOKENS, NEFERTITI_TOKENS, YAA_TOKENS,
   RITUAL_CHAIN_ID, ModeId, Token, deadlineMs,
 } from "@/lib/constants";
 
@@ -18,6 +18,7 @@ const RITUAL_TOKEN = TOKENS.find(t => t.isNative)!;
 export function getModeTokens(mode: ModeId): Token[] | null {
   if (mode === "amina")     return AMINA_TOKENS;
   if (mode === "nefertiti") return NEFERTITI_TOKENS;
+  if (mode === "yaa")       return YAA_TOKENS;
   return null;
 }
 
@@ -29,7 +30,8 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
   const pool         = POOLS[mode];
   const modeTokens   = getModeTokens(mode);
 
-  const [selectedToken, setSelectedToken] = useState<Token>(pool.token1);
+  const defaultToken = modeTokens ? modeTokens[0] : pool.token1;
+  const [selectedToken, setSelectedToken] = useState<Token>(defaultToken);
   const [isFlipped,     setIsFlipped]     = useState(false);
   const [amountIn,      setAmountIn]      = useState("");
   const [txState,       setTxState]       = useState<TxState>("idle");

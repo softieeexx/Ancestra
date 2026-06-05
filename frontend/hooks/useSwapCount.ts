@@ -3,7 +3,20 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import { Address, parseAbiItem } from "viem";
-import { POOLS } from "@/lib/constants";
+import { CONTRACTS } from "@/lib/constants";
+
+const ALL_PAIR_ADDRESSES: Address[] = [
+  CONTRACTS.PAIR_WRITUAL_USDC,
+  CONTRACTS.PAIR_WRITUAL_USDT,
+  CONTRACTS.PAIR_WRITUAL_DAI,
+  CONTRACTS.PAIR_WRITUAL_WETH,
+  CONTRACTS.PAIR_WRITUAL_MON,
+  CONTRACTS.PAIR_WRITUAL_SOL,
+  CONTRACTS.PAIR_WRITUAL_BTC,
+  CONTRACTS.PAIR_WRITUAL_PEPE,
+  CONTRACTS.PAIR_WRITUAL_SHIB,
+  CONTRACTS.PAIR_WRITUAL_DOGE,
+];
 import { ritualChain } from "@/lib/config";
 
 const SWAP_EVENT = parseAbiItem(
@@ -52,14 +65,10 @@ export function useSwapCount() {
     const seenHashes = new Set(cached.map((r) => r.txHash));
     const fresh: SwapRecord[] = [];
 
-    const poolAddresses = Object.entries(POOLS)
-      .map(([id, pool]) => ({ id, address: pool.pairAddress as Address }))
-      .filter((p) => !!p.address);
-
     try {
-      for (const pool of poolAddresses) {
+      for (const pairAddr of ALL_PAIR_ADDRESSES) {
         const logs = await client.getLogs({
-          address: pool.address,
+          address: pairAddr,
           event: SWAP_EVENT,
           args: { to: address },
           fromBlock: 0n,
@@ -71,7 +80,7 @@ export function useSwapCount() {
             seenHashes.add(hash);
             fresh.push({
               txHash: hash,
-              poolId: pool.id,
+              poolId: pairAddr,
               timestamp: Date.now(),
             });
           }
