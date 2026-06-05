@@ -38,14 +38,14 @@ export default function DappFrame({ children }: { children: ReactNode }) {
 
       {/* ── Outer matte ── */}
       <div style={{ position: "relative", minHeight: "100vh", padding: "clamp(5px, 2vw, 14px)", background: "#070503", overflow: "hidden" }}>
-        {/* Background image bleeds through matte at low opacity */}
+        {/* Ankara pattern bleeds through the matte */}
         <Image
-          src="/landing-bg.jpeg"
+          src="/ankara.png"
           alt=""
           fill
           priority
           className="object-cover object-center"
-          style={{ zIndex: 0, opacity: 0.35 }}
+          style={{ zIndex: 0, opacity: 0.55 }}
         />
 
         {/* ── Inner canvas ── */}
