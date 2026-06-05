@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useAccount, useWriteContract, useReadContract, useSwitchChain } from "wagmi";
+import { useAccount, useWriteContract, useReadContract, useSwitchChain, usePublicClient } from "wagmi";
 import { formatUnits, parseUnits, Address } from "viem";
+import { ritualChain } from "@/lib/config";
 import { PAIR_ABI, ROUTER_ABI, ERC20_ABI } from "@/lib/abi";
 import {
   POOLS, CONTRACTS, TOKENS, TOKEN_PAIR, WRITUAL_IS_TOKEN0,
@@ -26,6 +27,7 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
   const { address, chainId } = useAccount();
   const { switchChainAsync }  = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient({ chainId: ritualChain.id });
 
   const pool         = POOLS[mode];
   const modeTokens   = getModeTokens(mode);
@@ -144,6 +146,9 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
       const minOut      = expectedOut * 9970n / 10000n;
       const deadline    = deadlineMs();
 
+      // Fetch fees explicitly so MetaMask desktop doesn't fail fee estimation
+      const fees = await publicClient!.estimateFeesPerGas();
+
       if (!isFlipped) {
         // RITUAL (native) → token: payable swapExactRITUALForTokens
         setTxState("swapping");
@@ -154,6 +159,8 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
           args: [minOut, [CONTRACTS.WRITUAL, selectedToken.address], address, deadline],
           value: parsedIn,
           gas: 300000n,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         });
         setTxHash(hash);
       } else {
@@ -165,6 +172,8 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
           functionName: "approve",
           args: [CONTRACTS.ROUTER, parsedIn],
           gas: 100000n,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         });
 
         setTxState("swapping");
@@ -174,6 +183,8 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
           functionName: "swapExactTokensForRITUAL",
           args: [parsedIn, minOut, [selectedToken.address, CONTRACTS.WRITUAL], address, deadline],
           gas: 300000n,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         });
         setTxHash(hash);
       }
