@@ -13,6 +13,7 @@ const LEGENDS: Record<
   ModeId,
   {
     title: string;
+    queenTitle: string;
     subtitle: string;
     description: string;
     color: string;
@@ -20,10 +21,12 @@ const LEGENDS: Record<
     ring: string;
     image: string;
     dot: string;
+    titleFont: string;
   }
 > = {
   amina: {
     title: "Amina",
+    queenTitle: "Queen of Zaria",
     subtitle: "Stable Mode",
     description: "Swap RITUAL for stablecoins",
     color: "#4ADE80",
@@ -31,9 +34,11 @@ const LEGENDS: Record<
     ring: "rgba(74,222,128,0.35)",
     image: "/legends/amina.jpeg",
     dot: "#4ADE80",
+    titleFont: "Cinzel",
   },
   nefertiti: {
     title: "Nefertiti",
+    queenTitle: "Queen of Egypt",
     subtitle: "Crypto Mode",
     description: "Swap RITUAL for major crypto",
     color: "#FBBF24",
@@ -41,16 +46,19 @@ const LEGENDS: Record<
     ring: "rgba(251,191,36,0.35)",
     image: "/legends/nefertiti.jpeg",
     dot: "#FBBF24",
+    titleFont: "Cinzel",
   },
   yaa: {
     title: "Yaa Asantewa",
-    subtitle: "Alt Mode",
-    description: "Swap RITUAL for alt tokens",
+    queenTitle: "Queen Mother of Ejisu",
+    subtitle: "Degen Mode",
+    description: "Swap RITUAL for degen tokens",
     color: "#F87171",
     glow: "rgba(248,113,113,0.18)",
     ring: "rgba(248,113,113,0.35)",
     image: "/legends/yaa.jpeg",
     dot: "#F87171",
+    titleFont: "Rajdhani",
   },
 };
 
@@ -133,6 +141,22 @@ export default function LegendCard({ mode, index }: LegendCardProps) {
           >
             {leg.title}
           </h3>
+
+          {/* Queen title */}
+          <p
+            className="mb-2"
+            style={{
+              fontFamily: leg.titleFont === "Rajdhani" ? "Rajdhani, sans-serif" : "Cinzel, serif",
+              color: leg.color,
+              fontSize: "0.62rem",
+              letterSpacing: leg.titleFont === "Rajdhani" ? "0.16em" : "0.10em",
+              opacity: 0.8,
+              fontStyle: leg.titleFont === "Cinzel" ? "italic" : "normal",
+              fontWeight: leg.titleFont === "Rajdhani" ? 600 : 400,
+            }}
+          >
+            {leg.queenTitle}
+          </p>
 
           {/* Descriptor */}
           <p
