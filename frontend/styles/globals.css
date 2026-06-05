@@ -72,6 +72,37 @@ html, body {
   animation: dot-pulse 2.2s ease-in-out infinite;
 }
 
+/* ── Landing page entrance animations ──────────────────── */
+
+@keyframes hero-fade-up {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hero-fade-down {
+  from { opacity: 0; transform: translateY(-14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Crystal spire ambient glow — slow breathe */
+@keyframes crystal-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+.crystal-pulse-overlay {
+  animation: crystal-pulse 5.5s ease-in-out infinite;
+}
+
+/* Mist layer — slow horizontal drift */
+@keyframes mist-drift {
+  0%   { transform: translateX(0); }
+  50%  { transform: translateX(14px); }
+  100% { transform: translateX(0); }
+}
+.mist-layer {
+  animation: mist-drift 18s ease-in-out infinite;
+}
+
 /* CONNECT WALLET button */
 .connect-btn {
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;

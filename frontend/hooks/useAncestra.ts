@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { useAccount, useWriteContract, useReadContract, useSwitchChain, usePublicClient } from "wagmi";
 import { formatUnits, parseUnits, decodeEventLog, parseAbiItem, Address } from "viem";
-import { ritualChain } from "@/lib/config";
+import { ritualChain, RITUAL_RPC_URL } from "@/lib/config";
 import { PAIR_ABI, ROUTER_ABI, ERC20_ABI } from "@/lib/abi";
 import {
   POOLS, CONTRACTS, TOKENS, TOKEN_PAIR, WRITUAL_IS_TOKEN0,
@@ -136,6 +136,25 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
       if (chainId !== RITUAL_CHAIN_ID) {
         await switchChainAsync({ chainId: RITUAL_CHAIN_ID });
       }
+
+      // Re-register the chain with our proxy RPC — this resets MetaMask's circuit
+      // breaker, which trips when the raw RPC sees too many errors from multi-wallet
+      // extension conflicts (Aave Account, Coinbase Wallet, etc.).
+      try {
+        const proxyUrl = typeof window !== "undefined"
+          ? `${window.location.origin}/api/rpc`
+          : RITUAL_RPC_URL;
+        await (window as any).ethereum?.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: `0x${RITUAL_CHAIN_ID.toString(16)}`,
+            chainName: "Ritual Chain",
+            nativeCurrency: { name: "RITUAL", symbol: "RITUAL", decimals: 18 },
+            rpcUrls: [proxyUrl],
+            blockExplorerUrls: ["https://explorer.ritualfoundation.org"],
+          }],
+        });
+      } catch { /* chain already configured — safe to ignore */ }
 
       const parsedIn = parseUnits(amountIn, tokenIn.decimals);
       if (parsedIn === 0n) {

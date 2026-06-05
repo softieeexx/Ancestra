@@ -17,11 +17,19 @@ export const ritualChain = defineChain({
   },
 });
 
+// In production we proxy RPC through our own API route so MetaMask's
+// circuit-breaker doesn't get triggered by shared RPC load.
+const RITUAL_RPC_URL =
+  process.env.NEXT_PUBLIC_RPC_URL ||
+  "https://rpc.ritualfoundation.org";
+
+export { RITUAL_RPC_URL };
+
 export const config = createConfig(
   getDefaultConfig({
     chains: [ritualChain],
     transports: {
-      [ritualChain.id]: http(),
+      [ritualChain.id]: http(RITUAL_RPC_URL),
     },
     walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_ID || "",
     appName: "Ancestra",
