@@ -445,13 +445,14 @@ export default function HomePage() {
           <div className="flex flex-col items-center text-center w-full" style={{ maxWidth: "560px" }}>
 
             <h1
-              className="font-black text-white select-none"
+              className="text-white select-none"
               style={{
-                fontFamily: '"Geom", "Cinzel", sans-serif',
-                fontSize: "clamp(2.6rem, 12vw, 10rem)",
-                lineHeight: 0.88,
-                letterSpacing: "0.08em",
-                marginBottom: "1.6rem",
+                fontFamily: '"Cinzel Decorative", "Cinzel", serif',
+                fontWeight: 900,
+                fontSize: "clamp(2.4rem, 11vw, 9rem)",
+                lineHeight: 1.0,
+                letterSpacing: "0.12em",
+                marginBottom: "1.8rem",
                 textShadow: "0 0 60px rgba(0,0,0,1), 0 4px 32px rgba(0,0,0,0.95), 0 2px 8px rgba(0,0,0,0.9)",
                 animation: "hero-fade-up 1.1s 0.20s ease-out both",
               }}
