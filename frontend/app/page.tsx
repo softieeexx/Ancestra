@@ -444,21 +444,25 @@ export default function HomePage() {
         <main className="flex-1 flex flex-col items-center justify-center px-6 pb-6">
           <div className="flex flex-col items-center text-center w-full" style={{ maxWidth: "560px" }}>
 
-            <h1
-              className="text-white select-none"
+            <div
+              className="w-full select-none"
               style={{
-                fontFamily: '"Cinzel Decorative", "Cinzel", serif',
-                fontWeight: 900,
-                fontSize: "clamp(2.4rem, 11vw, 9rem)",
-                lineHeight: 1.0,
-                letterSpacing: "0.12em",
+                maxWidth: "min(520px, 88vw)",
                 marginBottom: "1.8rem",
-                textShadow: "0 0 60px rgba(0,0,0,1), 0 4px 32px rgba(0,0,0,0.95), 0 2px 8px rgba(0,0,0,0.9)",
                 animation: "hero-fade-up 1.1s 0.20s ease-out both",
+                filter: "drop-shadow(0 4px 32px rgba(0,0,0,0.95)) drop-shadow(0 0 60px rgba(0,0,0,0.9))",
               }}
             >
-              ANCESTRA
-            </h1>
+              <Image
+                src="/ancestra-title.png"
+                alt="ANCESTRA"
+                width={520}
+                height={200}
+                priority
+                className="w-full h-auto"
+                style={{ objectFit: "contain" }}
+              />
+            </div>
 
             <p
               className="font-rajdhani font-bold mb-5 tracking-[0.22em] md:tracking-[0.48em]"
