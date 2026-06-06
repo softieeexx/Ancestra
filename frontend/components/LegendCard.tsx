@@ -148,7 +148,7 @@ export default function LegendCard({ mode, index }: LegendCardProps) {
             style={{
               fontFamily: leg.titleFont === "Rajdhani" ? "Rajdhani, sans-serif" : "Cinzel, serif",
               color: leg.color,
-              fontSize: "0.62rem",
+              fontSize: "0.78rem",
               letterSpacing: leg.titleFont === "Rajdhani" ? "0.16em" : "0.10em",
               opacity: 0.8,
               fontStyle: leg.titleFont === "Cinzel" ? "italic" : "normal",
