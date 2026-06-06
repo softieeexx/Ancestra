@@ -44,6 +44,9 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
   const [txHash,        setTxHash]        = useState<Address | null>(null);
   const [error,         setError]         = useState<string | null>(null);
   const [actualOut,     setActualOut]     = useState<string | null>(null);
+  // Estimated amount captured just before amountIn is cleared — used as fallback
+  // while the receipt is still resolving (actualOut is null at that point).
+  const [snapshotOut,   setSnapshotOut]   = useState<string | null>(null);
 
   // Resolve pair address for the selected token
   const pairAddress: Address =
@@ -224,6 +227,7 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
 
       setTxHash(swapHash);
       setActualOut(null);
+      setSnapshotOut(estimatedOut()); // capture before amountIn clears
       setTxState("success");
       setAmountIn("");
       onSwapSuccess?.();
@@ -269,6 +273,7 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
     setTxHash(null);
     setError(null);
     setActualOut(null);
+    setSnapshotOut(null);
   }, []);
 
   return {
@@ -278,7 +283,7 @@ export function useAncestra(mode: ModeId, onSwapSuccess?: () => void) {
     selectedToken, changeToken,
     modeTokens,
     estimatedOut, priceImpact, fee,
-    txState, txHash, error, actualOut,
+    txState, txHash, error, actualOut, snapshotOut,
     swap, reset,
     reserve0, reserve1,
     rIn, rOut,

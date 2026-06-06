@@ -386,13 +386,13 @@ export default function HomePage() {
         }}
       />
 
-      {/* ── 3: Left dark fade (text readability) ────────────────────── */}
+      {/* ── 3: Center dark overlay (text readability) ───────────────── */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           zIndex: 2,
           background:
-            "linear-gradient(108deg, rgba(9,8,16,0.94) 0%, rgba(9,8,16,0.88) 22%, rgba(9,8,16,0.60) 42%, rgba(9,8,16,0.16) 62%, transparent 80%)",
+            "radial-gradient(ellipse 80% 70% at 50% 48%, rgba(9,8,16,0.72) 0%, rgba(9,8,16,0.52) 55%, rgba(9,8,16,0.18) 85%, transparent 100%)",
         }}
       />
 
@@ -445,14 +445,14 @@ export default function HomePage() {
           <div className="flex flex-col items-center text-center w-full" style={{ maxWidth: "560px" }}>
 
             <h1
-              className="font-cinzel font-black text-white select-none"
+              className="font-black text-white select-none"
               style={{
-                fontFamily: '"Trajan Pro", "Cinzel", serif',
-                fontSize: "clamp(2.2rem, 11.5vw, 10rem)",
+                fontFamily: '"Geom", "Cinzel", sans-serif',
+                fontSize: "clamp(2.6rem, 12vw, 10rem)",
                 lineHeight: 0.88,
-                letterSpacing: "0.01em",
+                letterSpacing: "0.08em",
                 marginBottom: "1.6rem",
-                textShadow: "0 2px 80px rgba(0,0,0,0.95)",
+                textShadow: "0 0 60px rgba(0,0,0,1), 0 4px 32px rgba(0,0,0,0.95), 0 2px 8px rgba(0,0,0,0.9)",
                 animation: "hero-fade-up 1.1s 0.20s ease-out both",
               }}
             >
@@ -460,10 +460,11 @@ export default function HomePage() {
             </h1>
 
             <p
-              className="font-rajdhani font-semibold mb-5 tracking-[0.18em] md:tracking-[0.44em]"
+              className="font-rajdhani font-bold mb-5 tracking-[0.22em] md:tracking-[0.48em]"
               style={{
-                color: "#c9a84c",
-                fontSize: "0.72rem",
+                color: "#e0bb6a",
+                fontSize: "0.78rem",
+                textShadow: "0 1px 12px rgba(0,0,0,0.9)",
                 animation: "hero-fade-up 1.1s 0.44s ease-out both",
               }}
             >
@@ -473,10 +474,11 @@ export default function HomePage() {
             <p
               className="mb-9 leading-relaxed max-w-sm"
               style={{
-                color: "#cccccc",
-                fontSize: "1.05rem",
+                color: "#e8e8e8",
+                fontSize: "1.08rem",
                 fontFamily: "Inter, sans-serif",
-                fontWeight: 300,
+                fontWeight: 400,
+                textShadow: "0 1px 16px rgba(0,0,0,0.95)",
                 animation: "hero-fade-up 1.1s 0.65s ease-out both",
               }}
             >

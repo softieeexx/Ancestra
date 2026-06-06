@@ -65,7 +65,7 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
     selectedToken, changeToken,
     modeTokens,
     estimatedOut, fee,
-    txState, txHash, error, actualOut,
+    txState, txHash, error, actualOut, snapshotOut,
     swap, reset,
     hasLiquidity,
   } = useAncestra(mode, onSwapSuccess);
@@ -353,7 +353,7 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
             onReset={reset}
             accent={accent}
             tokenOut={tokenOut.symbol}
-            outAmount={actualOut ?? outDisplay}
+            outAmount={actualOut ?? snapshotOut ?? outDisplay}
             outPrecision={outPrecision}
             isActual={!!actualOut}
           />
@@ -365,7 +365,7 @@ export default function SwapInterface({ mode, onSwapSuccess }: SwapInterfaceProp
         <SwapSuccessToast
           txHash={txHash}
           tokenOut={tokenOut.symbol}
-          outAmount={actualOut ?? outDisplay}
+          outAmount={actualOut ?? snapshotOut ?? "0"}
           outPrecision={outPrecision}
           isActual={!!actualOut}
           dismissing={toastState === "dismissing"}
