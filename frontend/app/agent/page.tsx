@@ -1,15 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount, useBalance, useReadContract, useWriteContract, usePublicClient, useSendTransaction } from "wagmi";
-import { parseUnits, formatEther, parseEther, Address, keccak256, stringToBytes, slice, decodeEventLog } from "viem";
-import { config, ritualChain } from "@/lib/config";
+import { useAccount, useBalance, useReadContract, useWriteContract, usePublicClient } from "wagmi";
+import { formatEther, parseEther, Address, keccak256, stringToBytes, slice, decodeEventLog } from "viem";
+import { ritualChain } from "@/lib/config";
 import AppNav from "@/components/AppNav";
 import DappFrame from "@/components/DappFrame";
 import WalletConnect from "@/components/WalletConnect";
-import { CONTRACTS, ANCESTRA_AGENT_ABI, ANCESTRA_AGENT_BYTECODE } from "@/lib/constants";
-import { FACTORY_ABI } from "@/lib/abi";
-
+import { CONTRACTS, ANCESTRA_AGENT_ABI } from "@/lib/constants";
 
 // RitualWallet ABI
 const RITUAL_WALLET_ABI = [
@@ -44,25 +42,11 @@ export default function OraclePage() {
   const { isConnected, address } = useAccount();
   const { data: ritualBalance, refetch: refetchRitualBalance } = useBalance({ address, chainId: ritualChain.id });
   const publicClient = usePublicClient({ chainId: ritualChain.id });
-  const { sendTransactionAsync } = useSendTransaction();
   const { writeContractAsync } = useWriteContract();
 
-  // Query Factory feeToSetter to determine the dApp owner
-  const { data: feeToSetter } = useReadContract({
-    address: CONTRACTS.FACTORY,
-    abi: FACTORY_ABI,
-    functionName: "feeToSetter",
-  });
+  const agentAddress = CONTRACTS.ANCESTRA_AGENT;
+  const isConfigured = agentAddress && agentAddress !== "0x0000000000000000000000000000000000000000";
 
-  const isDappOwner =
-    !!address &&
-    (address.toLowerCase() === "0xde13d407093e0c0f4c3131b31b4b7b2d604a00da" ||
-      (!!feeToSetter && address.toLowerCase() === feeToSetter.toLowerCase()));
-
-  // Global deployed agent address
-  const [agentAddress, setAgentAddress] = useState<Address | null>(null);
-  const [isAdminMode, setIsAdminMode] = useState(false);
-  const [deploying, setDeploying] = useState(false);
   const [depositAmount, setDepositAmount] = useState("0.1");
   const [depositing, setDepositing] = useState(false);
   const [prompt, setPrompt] = useState("Analyze the current state of WRITUAL pools and suggest an optimal allocation.");
@@ -70,14 +54,6 @@ export default function OraclePage() {
   const [statusText, setStatusText] = useState("");
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [agentResponse, setAgentResponse] = useState<string | null>(null);
-
-  // Load global deployed agent address from localStorage (simulates owner configuration)
-  useEffect(() => {
-    const saved = localStorage.getItem("ancestra_global_agent_address");
-    if (saved && saved.startsWith("0x")) {
-      setAgentAddress(saved as Address);
-    }
-  }, []);
 
   // Escrow balance from RitualWallet
   const { data: escrowBal, refetch: refetchEscrow } = useReadContract({
@@ -89,7 +65,7 @@ export default function OraclePage() {
   });
 
   // Check if sender has a pending job on AsyncJobTracker
-  const { data: hasPendingJob, refetch: refetchPendingJob } = useReadContract({
+  const { data: hasPendingJob } = useReadContract({
     address: CONTRACTS.ASYNC_JOB_TRACKER,
     abi: ASYNC_JOB_TRACKER_ABI,
     functionName: "hasPendingJobForSender",
@@ -99,17 +75,17 @@ export default function OraclePage() {
 
   // Read current results from the contract
   const { data: lastJobId } = useReadContract({
-    address: agentAddress || undefined,
+    address: isConfigured ? agentAddress : undefined,
     abi: ANCESTRA_AGENT_ABI,
     functionName: "lastJobId",
-    query: { enabled: !!agentAddress, refetchInterval: 3000 },
+    query: { enabled: !!isConfigured, refetchInterval: 3000 },
   });
 
   const { data: lastResultText } = useReadContract({
-    address: agentAddress || undefined,
+    address: isConfigured ? agentAddress : undefined,
     abi: ANCESTRA_AGENT_ABI,
     functionName: "lastResultText",
-    query: { enabled: !!agentAddress, refetchInterval: 3000 },
+    query: { enabled: !!isConfigured, refetchInterval: 3000 },
   });
 
   // Monitor fulfillment status
@@ -125,33 +101,6 @@ export default function OraclePage() {
       }
     }
   }, [lastJobId, lastResultText, currentJobId, refetchEscrow, refetchRitualBalance]);
-
-  // Deploy AncestraAgent Contract (Only visible/triggered in Admin Mode by DApp Owner)
-  const handleDeploy = async () => {
-    if (!address || !isDappOwner) return;
-    setDeploying(true);
-    setStatusText("Initiating agent contract deployment...");
-    try {
-      const txHash = await sendTransactionAsync({
-        data: ANCESTRA_AGENT_BYTECODE,
-      });
-      setStatusText("Waiting for contract deployment confirmation...");
-      const receipt = await publicClient!.waitForTransactionReceipt({ hash: txHash });
-      if (receipt.contractAddress) {
-        const deployedAddr = receipt.contractAddress;
-        setAgentAddress(deployedAddr);
-        localStorage.setItem("ancestra_global_agent_address", deployedAddr);
-        setStatusText(`Sovereign Agent contract successfully deployed by Owner at ${deployedAddr}`);
-      } else {
-        throw new Error("Deployment confirmed but contract address is missing.");
-      }
-    } catch (err: any) {
-      console.error(err);
-      setStatusText(`Deployment failed: ${err.message || err}`);
-    } finally {
-      setDeploying(false);
-    }
-  };
 
   // Deposit to RitualWallet Escrow
   const handleDeposit = async () => {
@@ -177,17 +126,9 @@ export default function OraclePage() {
     }
   };
 
-  const handleClearSaved = () => {
-    if (!isDappOwner) return;
-    localStorage.removeItem("ancestra_global_agent_address");
-    setAgentAddress(null);
-    setAgentResponse(null);
-    setStatusText("");
-  };
-
   // Trigger Sovereign Agent Query
   const handleConsultOracle = async () => {
-    if (!address || !agentAddress || !prompt) return;
+    if (!address || !isConfigured || !prompt) return;
 
     setLoading(true);
     setAgentResponse(null);
@@ -314,9 +255,9 @@ export default function OraclePage() {
           agentAddress,
           selector,
           1500000n,
-          20000000000n, // 20 Gwei
-          2000000000n, // 2 Gwei
-          0, // Claude Code
+          20000000000n,
+          2000000000n,
+          0,
           prompt,
           "0x",
           { platform: "", path: "", keyRef: "" },
@@ -343,7 +284,6 @@ export default function OraclePage() {
       setStatusText("Waiting for transaction confirmation...");
       const receipt = await publicClient!.waitForTransactionReceipt({ hash: tx });
       
-      // Parse Job ID from event or read state
       let jobId: string | null = null;
       for (const log of receipt.logs) {
         try {
@@ -404,7 +344,7 @@ export default function OraclePage() {
             Ancestral Oracle
           </h1>
           <p className="mt-2 mx-auto text-sm max-w-md text-earth-100/50">
-            Consult a Sovereign Agent executing inside a verifiable TEE on the Ritual Network. Uses the shared global contract deployed by the owner.
+            Consult a Sovereign Agent executing inside a verifiable TEE on the Ritual Network. Uses the shared global contract configured in constants.
           </p>
         </div>
 
@@ -416,23 +356,8 @@ export default function OraclePage() {
           </div>
         ) : (
           <div className="w-full max-w-3xl space-y-6">
-            {/* Owner Admin Mode Toggle */}
-            {isDappOwner && (
-              <div className="flex items-center justify-end">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={isAdminMode}
-                    onChange={(e) => setIsAdminMode(e.target.checked)}
-                    className="rounded border-ritual bg-earth-900 text-ritual focus:ring-0 w-3.5 h-3.5"
-                  />
-                  <span className="text-[10px] font-mono tracking-wider uppercase text-earth-100/40">DApp Admin Mode</span>
-                </label>
-              </div>
-            )}
-
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Sidebar: Escrow and Deployment */}
+              {/* Sidebar: Escrow */}
               <div className="md:col-span-1 space-y-5">
                 {/* Escrow Panel */}
                 <div
@@ -486,54 +411,6 @@ export default function OraclePage() {
                     </button>
                   </div>
                 </div>
-
-                {/* Owner-Only Deployment Panel */}
-                {isAdminMode && (
-                  <div
-                    className="p-5 rounded-2xl border bg-earth-900/50 backdrop-blur-md border-ritual/20 animate-fade-in"
-                    style={{ background: "rgba(212, 168, 83, 0.03)" }}
-                  >
-                    <h3 className="font-display font-bold text-sm text-[#D4A853] mb-4 flex items-center gap-2">
-                      <span className="text-xs">🛠</span> Owner Admin Panel
-                    </h3>
-
-                    {agentAddress ? (
-                      <div className="space-y-4">
-                        <div className="p-3 rounded-xl bg-black/40 border border-ritual/10">
-                          <p className="text-[10px] text-earth-100/40 font-mono uppercase tracking-wider mb-1">Global Contract Address</p>
-                          <p className="text-xs font-mono text-white/90 break-all">{agentAddress}</p>
-                        </div>
-                        <div className="p-3 rounded-xl bg-green-500/5 border border-green-500/20 text-center">
-                          <p className="text-xs text-green-400 font-medium">✓ Agent Active</p>
-                        </div>
-                        <button
-                          onClick={handleClearSaved}
-                          className="w-full py-2 text-xs font-semibold text-red-400/80 hover:text-red-400 transition-colors"
-                        >
-                          Tear Down Agent Contract
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <p className="text-xs text-earth-100/50 leading-relaxed">
-                          As DApp Owner, deploy the global `AncestraAgent` contract instances so that users can query the AI Oracle.
-                        </p>
-                        <button
-                          onClick={handleDeploy}
-                          disabled={deploying}
-                          className="w-full py-2.5 rounded-xl text-xs font-bold uppercase transition-all active:scale-98 disabled:opacity-50"
-                          style={{
-                            background: "#D4A853",
-                            color: "#090810",
-                            boxShadow: "0 0 16px rgba(212, 168, 83, 0.18)",
-                          }}
-                        >
-                          {deploying ? "Deploying..." : "Deploy Agent Contract"}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* Main Console: Prompt & Terminals */}
@@ -548,13 +425,11 @@ export default function OraclePage() {
                   </h3>
 
                   <div className="space-y-4 flex-1 flex flex-col">
-                    {!agentAddress ? (
+                    {!isConfigured ? (
                       <div className="p-8 text-center rounded-xl bg-black/20 border border-white/5 my-auto">
-                        <p className="text-sm text-earth-100/40">The Sovereign Agent contract is not yet deployed by the Owner.</p>
-                        <p className="text-xs text-earth-100/30 mt-2">
-                          {isDappOwner
-                            ? "Enable DApp Admin Mode to deploy the contract."
-                            : "Please contact the DApp Owner to deploy the Sovereign Agent."}
+                        <p className="text-sm text-earth-100/40">The Sovereign Agent contract is not yet configured.</p>
+                        <p className="text-xs text-earth-100/30 mt-2 leading-relaxed">
+                          Please deploy <code className="text-ritual">AncestraAgent.sol</code> in Remix on the Ritual Testnet, and configure its address in <code className="text-ritual">frontend/lib/constants.ts</code>.
                         </p>
                       </div>
                     ) : (
