@@ -12,6 +12,7 @@ const TABS = [
   { label: "Liquidity", short: "LIQ",  href: "/liquidity" },
   { label: "Pools",     short: "POOL", href: "/pools" },
   { label: "Portfolio", short: "PORT", href: "/portfolio" },
+  { label: "Oracle",    short: "ORCL", href: "/agent" },
 ] as const;
 
 export default function AppNav() {
