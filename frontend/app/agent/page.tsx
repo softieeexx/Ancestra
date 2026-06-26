@@ -138,6 +138,8 @@ export default function OraclePage() {
         functionName: "deposit",
         args: [50000n],
         value: val,
+        maxFeePerGas: 2000000000n, // 2 gwei
+        maxPriorityFeePerGas: 2000000000n, // 2 gwei
       });
       await publicClient!.waitForTransactionReceipt({ hash: tx, timeout: 180_000 });
       refetchEscrow();
@@ -356,6 +358,8 @@ export default function OraclePage() {
         functionName: "callSovereignAgent",
         args: [encodedPayload],
         gas: 2000000n, // Override gas estimation for precompile call
+        maxFeePerGas: 2000000000n, // 2 gwei
+        maxPriorityFeePerGas: 2000000000n, // 2 gwei
       });
 
       setStatusText("Waiting for transaction confirmation...");
