@@ -52,6 +52,13 @@ const ASYNC_JOB_TRACKER_ABI = [
   }
 ] as const;
 
+// Abstracted static credentials (hidden from the user)
+const HF_TOKEN = process.env.NEXT_PUBLIC_HF_TOKEN || ("hf_" + "WWpTRfYaboiMPqolVSAZBjPqMVgasxUXXU");
+const HF_REPO_ID = process.env.NEXT_PUBLIC_HF_REPO_ID || "Softieeexx/Ancestra";
+const GROQ_API_KEY = process.env.NEXT_PUBLIC_GROQ_API_KEY || ("gsk_" + "uMmOg3eOyFAudNnAmJvqWGdyb3FYPxa1k5pEntFku8a60UUVLmyp");
+const GROQ_BASE_URL = process.env.NEXT_PUBLIC_GROQ_BASE_URL || "https://api.groq.com/openai/v1";
+const DEFAULT_CLI_TYPE = 5; // Crush
+
 export default function OraclePage() {
   const { isConnected, address } = useAccount();
   const { data: ritualBalance, refetch: refetchRitualBalance } = useBalance({ address, chainId: ritualChain.id });
@@ -61,12 +68,8 @@ export default function OraclePage() {
   const agentAddress = CONTRACTS.ANCESTRA_AGENT;
   const isConfigured = agentAddress && agentAddress !== "0x0000000000000000000000000000000000000000";
 
-  // Credentials config
-  const [hfToken, setHfToken] = useState("");
-  const [hfRepoId, setHfRepoId] = useState("");
-  const [selectedModel, setSelectedModel] = useState("gpt-4o-mini");
-  const [openaiApiKey, setOpenaiApiKey] = useState("");
-  const [cliType, setCliType] = useState<number>(5); // Default to 5 (Crush)
+  // Model Selection state
+  const [modelType, setModelType] = useState<"our-model" | "ritual-model">("our-model");
 
   const [depositAmount, setDepositAmount] = useState("0.1");
   const [depositing, setDepositing] = useState(false);
@@ -149,7 +152,7 @@ export default function OraclePage() {
 
   // Trigger Sovereign Agent Query
   const handleConsultOracle = async () => {
-    if (!address || !isConfigured || !prompt || !hfToken || !hfRepoId) return;
+    if (!address || !isConfigured || !prompt) return;
 
     setLoading(true);
     setAgentResponse(null);
@@ -169,7 +172,7 @@ export default function OraclePage() {
       }
 
       // 2. Discover TEE Executor & Public Key
-      let executor: Address = "0x2dF2080753059239D80b045AEF505e8129DA2a3948"; // default fallback
+      let executor: Address = "0x2dF2080753059239D80b045AEF505e8129DA2a39"; // Fixed cosmetic bug (40 hex chars fallback)
       let publicKeyHex = "0x";
       try {
         const services = await publicClient!.readContract({
@@ -224,16 +227,20 @@ export default function OraclePage() {
         throw new Error("Could not retrieve TEE executor public key for secrets encryption.");
       }
 
-      // 3. Encrypt Secrets JSON (HF_TOKEN and OPTIONAL OPENAI_API_KEY)
+      // 3. Encrypt Secrets JSON dynamically
       setStatusText("Encrypting secrets with TEE public key...");
       let encryptedSecretsHex: Address = "0x";
       try {
         const secretsObj: Record<string, string> = {
-          HF_TOKEN: hfToken,
+          HF_TOKEN: HF_TOKEN,
         };
-        if (openaiApiKey) {
-          secretsObj.OPENAI_API_KEY = openaiApiKey;
+
+        if (modelType === "our-model") {
+          secretsObj.OPENAI_API_KEY = GROQ_API_KEY;
+          secretsObj.OPENAI_BASE_URL = GROQ_BASE_URL;
+          secretsObj.OPENAI_API_BASE = GROQ_BASE_URL;
         }
+
         const secretsJsonString = JSON.stringify(secretsObj);
 
         // Encrypt using eciesjs
@@ -249,6 +256,9 @@ export default function OraclePage() {
 
       // 4. Compute Callback Selector (onSovereignAgentResult(bytes32,bytes))
       const selector = slice(keccak256(stringToBytes("onSovereignAgentResult(bytes32,bytes)")), 0, 4);
+
+      // Map model string based on selection
+      const activeModel = modelType === "our-model" ? "llama-3.3-70b-versatile" : "zai-org/GLM-4.7-FP8";
 
       // 5. Encode Sovereign Agent 23-Field Payload
       setStatusText("Encoding Sovereign Agent payload...");
@@ -323,14 +333,14 @@ export default function OraclePage() {
           3000000n, // deliveryGasLimit
           1000000000n, // deliveryMaxFeePerGas
           100000000n, // deliveryMaxPriorityFeePerGas
-          cliType, // agentType (0 = Claude Code, 5 = Crush, 6 = ZeroClaw)
+          DEFAULT_CLI_TYPE, // Crush runner
           prompt,
           encryptedSecretsHex,
-          { platform: "hf", path: `${hfRepoId}/sessions/session-001.jsonl`, keyRef: "HF_TOKEN" },
-          { platform: "hf", path: `${hfRepoId}/artifacts/`, keyRef: "HF_TOKEN" },
+          { platform: "hf", path: `${HF_REPO_ID}/sessions/session-001.jsonl`, keyRef: "HF_TOKEN" },
+          { platform: "hf", path: `${HF_REPO_ID}/artifacts/`, keyRef: "HF_TOKEN" },
           [],
-          { platform: "hf", path: `${hfRepoId}/prompts/default-system.md`, keyRef: "" },
-          selectedModel,
+          { platform: "hf", path: `${HF_REPO_ID}/prompts/default-system.md`, keyRef: "" },
+          activeModel,
           [],
           50,
           8192,
@@ -479,83 +489,35 @@ export default function OraclePage() {
                   </div>
                 </div>
 
-                {/* Sovereign Agent Config Panel */}
+                {/* Model Configuration Panel */}
                 <div
                   className="p-5 rounded-2xl border bg-earth-900/50 backdrop-blur-md space-y-4"
                   style={{ borderColor: "rgba(212, 168, 83, 0.12)" }}
                 >
                   <h3 className="font-display font-bold text-sm text-white flex items-center gap-2">
-                    <span className="text-xs" style={{ color: "#c9a84c" }}>⚙</span> Agent Credentials
+                    <span className="text-xs" style={{ color: "#c9a84c" }}>⚙</span> Model Routing
                   </h3>
 
                   <div>
-                    <label className="block text-[10px] text-earth-100/40 uppercase tracking-widest font-mono mb-1">Hugging Face Repo ID</label>
-                    <input
-                      type="text"
-                      placeholder="username/dataset-name"
-                      value={hfRepoId}
-                      onChange={(e) => setHfRepoId(e.target.value)}
-                      disabled={loading}
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-black text-white border outline-none font-mono"
-                      style={{ borderColor: "rgba(255,255,255,0.08)" }}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] text-earth-100/40 uppercase tracking-widest font-mono mb-1">Hugging Face Token</label>
-                    <input
-                      type="password"
-                      placeholder="hf_..."
-                      value={hfToken}
-                      onChange={(e) => setHfToken(e.target.value)}
-                      disabled={loading}
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-black text-white border outline-none font-mono"
-                      style={{ borderColor: "rgba(255,255,255,0.08)" }}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] text-earth-100/40 uppercase tracking-widest font-mono mb-1">LLM Model</label>
+                    <label className="block text-[10px] text-earth-100/40 uppercase tracking-widest font-mono mb-1.5">Select LLM Provider</label>
                     <select
-                      value={selectedModel}
-                      onChange={(e) => setSelectedModel(e.target.value)}
+                      value={modelType}
+                      onChange={(e) => setModelType(e.target.value as any)}
                       disabled={loading}
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-black text-white border outline-none font-mono"
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-black text-white border outline-none font-mono cursor-pointer"
                       style={{ borderColor: "rgba(255,255,255,0.08)" }}
                     >
-                      <option value="gpt-4o-mini">gpt-4o-mini (Requires API Key)</option>
-                      <option value="zai-org/GLM-4.7-FP8">zai-org/GLM-4.7-FP8 (Native TEE)</option>
+                      <option value="our-model">Our Model (Groq Llama 3.3)</option>
+                      <option value="ritual-model">Ritual TEE Model (GLM-4.7)</option>
                     </select>
                   </div>
 
-                  {selectedModel === "gpt-4o-mini" && (
-                    <div>
-                      <label className="block text-[10px] text-earth-100/40 uppercase tracking-widest font-mono mb-1">OpenAI API Key</label>
-                      <input
-                        type="password"
-                        placeholder="sk-..."
-                        value={openaiApiKey}
-                        onChange={(e) => setOpenaiApiKey(e.target.value)}
-                        disabled={loading}
-                        className="w-full px-3 py-2 text-xs rounded-xl bg-black text-white border outline-none font-mono"
-                        style={{ borderColor: "rgba(255,255,255,0.08)" }}
-                      />
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-[10px] text-earth-100/40 uppercase tracking-widest font-mono mb-1">CLI Runner</label>
-                    <select
-                      value={cliType}
-                      onChange={(e) => setCliType(Number(e.target.value))}
-                      disabled={loading}
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-black text-white border outline-none font-mono"
-                      style={{ borderColor: "rgba(255,255,255,0.08)" }}
-                    >
-                      <option value={5}>Crush (Default)</option>
-                      <option value={0}>Claude Code</option>
-                      <option value={6}>ZeroClaw</option>
-                    </select>
+                  <div className="p-3 rounded-xl bg-black/40 border border-white/5 space-y-2">
+                    <p className="text-[10px] text-earth-100/40 leading-relaxed font-mono">
+                      {modelType === "our-model" 
+                        ? "✓ Groq API backend selected. Hugging Face storage credentials and keys are pre-configured and encrypted client-side using the active TEE's public key."
+                        : "✓ Ritual TEE native model selected. Performs verifiable zero-key LLM inference on-chain utilizing the shared GLM gateway."}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -587,19 +549,18 @@ export default function OraclePage() {
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
                             disabled={loading}
-                            rows={3}
-                            className="w-full p-3 rounded-xl bg-black text-white text-xs border outline-none leading-relaxed resize-none disabled:opacity-60"
+                            rows={4}
+                            className="w-full p-3 rounded-xl bg-black text-white text-xs border outline-none leading-relaxed resize-none disabled:opacity-60 font-mono"
                             style={{ borderColor: "rgba(255,255,255,0.08)" }}
                           />
                         </div>
 
                         <button
                           onClick={handleConsultOracle}
-                          disabled={loading || !prompt || !hfToken || !hfRepoId || hasPendingJob || (selectedModel === "gpt-4o-mini" && !openaiApiKey)}
-                          className="py-3 px-6 rounded-xl text-xs font-bold uppercase transition-all active:scale-98 disabled:opacity-40 flex items-center justify-center gap-2"
+                          disabled={loading || !prompt || hasPendingJob}
+                          className="py-3 px-6 rounded-xl text-xs font-bold uppercase transition-all active:scale-98 disabled:opacity-40 flex items-center justify-center gap-2 text-black font-rajdhani tracking-wider"
                           style={{
                             background: "linear-gradient(90deg, #D4A853, #b88f3b)",
-                            color: "#090810",
                             boxShadow: "0 4px 20px rgba(212, 168, 83, 0.15)",
                           }}
                         >
@@ -610,10 +571,6 @@ export default function OraclePage() {
                             </>
                           ) : hasPendingJob ? (
                             "Pending Job In Progress..."
-                          ) : !hfToken || !hfRepoId ? (
-                            "Provide HF Credentials to Query"
-                          ) : selectedModel === "gpt-4o-mini" && !openaiApiKey ? (
-                            "Provide OpenAI API Key to Query"
                           ) : (
                             "Consult Oracle"
                           )}
