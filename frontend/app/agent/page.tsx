@@ -279,6 +279,7 @@ export default function OraclePage() {
         abi: ANCESTRA_AGENT_ABI,
         functionName: "callSovereignAgent",
         args: [encodedPayload],
+        gas: 2000000n, // Override gas estimation for precompile call
       });
 
       setStatusText("Waiting for transaction confirmation...");
