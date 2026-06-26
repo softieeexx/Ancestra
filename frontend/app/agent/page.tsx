@@ -112,7 +112,7 @@ export default function OraclePage() {
         address: CONTRACTS.RITUAL_WALLET,
         abi: RITUAL_WALLET_ABI,
         functionName: "deposit",
-        args: [500n],
+        args: [50000n],
         value: val,
       });
       await publicClient!.waitForTransactionReceipt({ hash: tx, timeout: 180_000 });
