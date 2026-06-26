@@ -115,7 +115,7 @@ export default function OraclePage() {
         args: [500n],
         value: val,
       });
-      await publicClient!.waitForTransactionReceipt({ hash: tx });
+      await publicClient!.waitForTransactionReceipt({ hash: tx, timeout: 180_000 });
       refetchEscrow();
       refetchRitualBalance();
       setDepositAmount("0.1");
@@ -282,7 +282,7 @@ export default function OraclePage() {
       });
 
       setStatusText("Waiting for transaction confirmation...");
-      const receipt = await publicClient!.waitForTransactionReceipt({ hash: tx });
+      const receipt = await publicClient!.waitForTransactionReceipt({ hash: tx, timeout: 180_000 });
       
       let jobId: string | null = null;
       for (const log of receipt.logs) {
