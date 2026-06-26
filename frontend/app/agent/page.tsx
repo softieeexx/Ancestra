@@ -9,6 +9,20 @@ import DappFrame from "@/components/DappFrame";
 import WalletConnect from "@/components/WalletConnect";
 import { CONTRACTS, ANCESTRA_AGENT_ABI } from "@/lib/constants";
 
+// Helper functions for binary conversions
+function hexToBytes(hex: string): Uint8Array {
+  const cleanHex = hex.startsWith("0x") ? hex.slice(2) : hex;
+  const bytes = new Uint8Array(cleanHex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(cleanHex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return "0x" + Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 // RitualWallet ABI
 const RITUAL_WALLET_ABI = [
   {
@@ -47,9 +61,16 @@ export default function OraclePage() {
   const agentAddress = CONTRACTS.ANCESTRA_AGENT;
   const isConfigured = agentAddress && agentAddress !== "0x0000000000000000000000000000000000000000";
 
+  // Credentials config
+  const [hfToken, setHfToken] = useState("");
+  const [hfRepoId, setHfRepoId] = useState("");
+  const [selectedModel, setSelectedModel] = useState("gpt-4o-mini");
+  const [openaiApiKey, setOpenaiApiKey] = useState("");
+  const [cliType, setCliType] = useState<number>(5); // Default to 5 (Crush)
+
   const [depositAmount, setDepositAmount] = useState("0.1");
   const [depositing, setDepositing] = useState(false);
-  const [prompt, setPrompt] = useState("Analyze the current state of WRITUAL pools and suggest an optimal allocation.");
+  const [prompt, setPrompt] = useState("You are a sovereign Ritual agent called Builder Signal Agent. Your task is to analyze one important trend at the intersection of AI and crypto, explain why it matters for builders, suggest one practical product idea, and return a short confirmation that the agent ran successfully.");
   const [loading, setLoading] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -128,11 +149,11 @@ export default function OraclePage() {
 
   // Trigger Sovereign Agent Query
   const handleConsultOracle = async () => {
-    if (!address || !isConfigured || !prompt) return;
+    if (!address || !isConfigured || !prompt || !hfToken || !hfRepoId) return;
 
     setLoading(true);
     setAgentResponse(null);
-    setStatusText("Discovering active TEE executor from TEEServiceRegistry...");
+    setStatusText("Discovering TEE executor and public key from TEEServiceRegistry...");
 
     try {
       // 1. Check pending jobs
@@ -147,44 +168,89 @@ export default function OraclePage() {
         throw new Error("You already have a pending job on the Ritual Network. Please wait for it to settle before submitting a new one.");
       }
 
-      // 2. Discover TEE Executor
-      const randomSeed = BigInt(Math.floor(Math.random() * 1000000));
+      // 2. Discover TEE Executor & Public Key
       let executor: Address = "0x2dF2080753059239D80b045AEF505e8129DA2a3948"; // default fallback
+      let publicKeyHex = "0x";
       try {
-        const serviceNode = await publicClient!.readContract({
+        const services = await publicClient!.readContract({
           address: CONTRACTS.TEE_SERVICE_REGISTRY,
           abi: [
             {
-              "inputs": [
-                { "internalType": "uint8", "name": "capability", "type": "uint8" },
-                { "internalType": "bool", "name": "checkValidity", "type": "bool" },
-                { "internalType": "uint256", "name": "seed", "type": "uint256" },
-                { "internalType": "uint256", "name": "maxProbes", "type": "uint256" }
-              ],
-              "name": "pickServiceByCapability",
-              "outputs": [
-                { "internalType": "address", "name": "teeAddress", "type": "address" },
-                { "internalType": "bool", "name": "found", "type": "bool" }
-              ],
+              "name": "getServicesByCapability",
+              "type": "function",
               "stateMutability": "view",
-              "type": "function"
+              "inputs": [{"name": "capability", "type": "uint8"}, {"name": "checkValidity", "type": "bool"}],
+              "outputs": [
+                {
+                  "name": "",
+                  "type": "tuple[]",
+                  "components": [
+                    {
+                      "name": "node",
+                      "type": "tuple",
+                      "components": [
+                        {"name": "paymentAddress", "type": "address"},
+                        {"name": "teeAddress", "type": "address"},
+                        {"name": "teeType", "type": "uint8"},
+                        {"name": "publicKey", "type": "bytes"},
+                        {"name": "endpoint", "type": "string"},
+                        {"name": "certPubKeyHash", "type": "bytes32"},
+                        {"name": "capability", "type": "uint8"}
+                      ]
+                    },
+                    {"name": "isValid", "type": "bool"},
+                    {"name": "workloadId", "type": "bytes32"}
+                  ]
+                }
+              ]
             }
           ],
-          functionName: "pickServiceByCapability",
-          args: [0, true, randomSeed, 10n],
+          functionName: "getServicesByCapability",
+          args: [0, true],
         });
-        if (serviceNode && serviceNode[1]) {
-          executor = serviceNode[0];
-          console.log("Selected dynamic TEE executor:", executor);
+
+        if (services && (services as any[]).length > 0) {
+          const selectedIndex = Math.floor(Math.random() * (services as any[]).length);
+          const selected = (services as any[])[selectedIndex];
+          executor = selected.node.teeAddress;
+          publicKeyHex = selected.node.publicKey;
+          console.log("Selected TEE executor:", executor);
         }
       } catch (err) {
         console.warn("TEEServiceRegistry query failed, utilizing fallback executor.", err);
       }
 
-      // 3. Compute Callback Selector (onSovereignAgentResult(bytes32,bytes))
+      if (publicKeyHex === "0x") {
+        throw new Error("Could not retrieve TEE executor public key for secrets encryption.");
+      }
+
+      // 3. Encrypt Secrets JSON (HF_TOKEN and OPTIONAL OPENAI_API_KEY)
+      setStatusText("Encrypting secrets with TEE public key...");
+      let encryptedSecretsHex: Address = "0x";
+      try {
+        const secretsObj: Record<string, string> = {
+          HF_TOKEN: hfToken,
+        };
+        if (openaiApiKey) {
+          secretsObj.OPENAI_API_KEY = openaiApiKey;
+        }
+        const secretsJsonString = JSON.stringify(secretsObj);
+
+        // Encrypt using eciesjs
+        const { encrypt } = await import("eciesjs");
+        const pubKeyBytes = hexToBytes(publicKeyHex);
+        const encryptedBuffer = encrypt(pubKeyBytes, new TextEncoder().encode(secretsJsonString));
+        encryptedSecretsHex = bytesToHex(encryptedBuffer) as Address;
+        console.log("Secrets encrypted successfully.");
+      } catch (encErr: any) {
+        console.error(encErr);
+        throw new Error("Encryption failed: " + (encErr.message || encErr));
+      }
+
+      // 4. Compute Callback Selector (onSovereignAgentResult(bytes32,bytes))
       const selector = slice(keccak256(stringToBytes("onSovereignAgentResult(bytes32,bytes)")), 0, 4);
 
-      // 4. Encode Sovereign Agent 23-Field Payload
+      // 5. Encode Sovereign Agent 23-Field Payload
       setStatusText("Encoding Sovereign Agent payload...");
       const { encodeAbiParameters } = await import("viem");
       const encodedPayload = encodeAbiParameters(
@@ -247,32 +313,32 @@ export default function OraclePage() {
         ],
         [
           executor,
-          100n,
-          "0x",
-          10n,
-          200n,
-          "",
+          500n, // ttl
+          "0x", // userPublicKey
+          5n, // pollIntervalBlocks
+          6000n, // maxPollBlock
+          "SOVEREIGN_AGENT_TASK",
           agentAddress,
           selector,
-          1500000n,
-          20000000000n,
-          2000000000n,
-          0,
+          3000000n, // deliveryGasLimit
+          1000000000n, // deliveryMaxFeePerGas
+          100000000n, // deliveryMaxPriorityFeePerGas
+          cliType, // agentType (0 = Claude Code, 5 = Crush, 6 = ZeroClaw)
           prompt,
-          "0x",
-          { platform: "", path: "", keyRef: "" },
-          { platform: "", path: "", keyRef: "" },
+          encryptedSecretsHex,
+          { platform: "hf", path: `${hfRepoId}/sessions/session-001.jsonl`, keyRef: "HF_TOKEN" },
+          { platform: "hf", path: `${hfRepoId}/artifacts/`, keyRef: "HF_TOKEN" },
           [],
-          { platform: "", path: "", keyRef: "" },
-          "zai-org/GLM-4.7-FP8",
+          { platform: "hf", path: `${hfRepoId}/prompts/default-system.md`, keyRef: "" },
+          selectedModel,
           [],
-          5,
-          4000,
+          50,
+          8192,
           ""
         ]
       );
 
-      // 5. Submit Transaction to Deployed Agent
+      // 6. Submit Transaction to Deployed Agent
       setStatusText("Submitting query transaction to AncestraAgent contract (Phase 1)...");
       const tx = await writeContractAsync({
         address: agentAddress,
@@ -336,7 +402,7 @@ export default function OraclePage() {
         <AppNav />
       </div>
 
-      <main className="relative z-10 flex-1 flex flex-col items-center px-4 py-8 md:py-12">
+      <main className="relative z-10 flex-1 flex flex-col items-center px-4 py-8 md:py-12 w-full">
         <div className="text-center mb-8">
           <p className="font-rajdhani font-semibold tracking-[0.4em] uppercase mb-2" style={{ color: "#c9a84c", fontSize: "0.68rem" }}>
             Enshrined AI Oracle
@@ -356,9 +422,9 @@ export default function OraclePage() {
             <WalletConnect />
           </div>
         ) : (
-          <div className="w-full max-w-3xl space-y-6">
+          <div className="w-full max-w-5xl space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Sidebar: Escrow */}
+              {/* Sidebar Configurations */}
               <div className="md:col-span-1 space-y-5">
                 {/* Escrow Panel */}
                 <div
@@ -393,7 +459,7 @@ export default function OraclePage() {
                         value={depositAmount}
                         onChange={(e) => setDepositAmount(e.target.value)}
                         disabled={depositing}
-                        className="w-full pl-3 pr-16 py-2 text-xs font-semibold rounded-xl bg-black border outline-none text-white"
+                        className="w-full pl-3 pr-16 py-2 text-xs font-semibold rounded-xl bg-black border outline-none text-white font-mono"
                         style={{ borderColor: "rgba(255,255,255,0.08)" }}
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-earth-100/40 font-mono font-semibold">RITUAL</span>
@@ -410,6 +476,86 @@ export default function OraclePage() {
                     >
                       {depositing ? "Depositing..." : "Deposit to Escrow"}
                     </button>
+                  </div>
+                </div>
+
+                {/* Sovereign Agent Config Panel */}
+                <div
+                  className="p-5 rounded-2xl border bg-earth-900/50 backdrop-blur-md space-y-4"
+                  style={{ borderColor: "rgba(212, 168, 83, 0.12)" }}
+                >
+                  <h3 className="font-display font-bold text-sm text-white flex items-center gap-2">
+                    <span className="text-xs" style={{ color: "#c9a84c" }}>⚙</span> Agent Credentials
+                  </h3>
+
+                  <div>
+                    <label className="block text-[10px] text-earth-100/40 uppercase tracking-widest font-mono mb-1">Hugging Face Repo ID</label>
+                    <input
+                      type="text"
+                      placeholder="username/dataset-name"
+                      value={hfRepoId}
+                      onChange={(e) => setHfRepoId(e.target.value)}
+                      disabled={loading}
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-black text-white border outline-none font-mono"
+                      style={{ borderColor: "rgba(255,255,255,0.08)" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-earth-100/40 uppercase tracking-widest font-mono mb-1">Hugging Face Token</label>
+                    <input
+                      type="password"
+                      placeholder="hf_..."
+                      value={hfToken}
+                      onChange={(e) => setHfToken(e.target.value)}
+                      disabled={loading}
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-black text-white border outline-none font-mono"
+                      style={{ borderColor: "rgba(255,255,255,0.08)" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-earth-100/40 uppercase tracking-widest font-mono mb-1">LLM Model</label>
+                    <select
+                      value={selectedModel}
+                      onChange={(e) => setSelectedModel(e.target.value)}
+                      disabled={loading}
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-black text-white border outline-none font-mono"
+                      style={{ borderColor: "rgba(255,255,255,0.08)" }}
+                    >
+                      <option value="gpt-4o-mini">gpt-4o-mini (Requires API Key)</option>
+                      <option value="zai-org/GLM-4.7-FP8">zai-org/GLM-4.7-FP8 (Native TEE)</option>
+                    </select>
+                  </div>
+
+                  {selectedModel === "gpt-4o-mini" && (
+                    <div>
+                      <label className="block text-[10px] text-earth-100/40 uppercase tracking-widest font-mono mb-1">OpenAI API Key</label>
+                      <input
+                        type="password"
+                        placeholder="sk-..."
+                        value={openaiApiKey}
+                        onChange={(e) => setOpenaiApiKey(e.target.value)}
+                        disabled={loading}
+                        className="w-full px-3 py-2 text-xs rounded-xl bg-black text-white border outline-none font-mono"
+                        style={{ borderColor: "rgba(255,255,255,0.08)" }}
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[10px] text-earth-100/40 uppercase tracking-widest font-mono mb-1">CLI Runner</label>
+                    <select
+                      value={cliType}
+                      onChange={(e) => setCliType(Number(e.target.value))}
+                      disabled={loading}
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-black text-white border outline-none font-mono"
+                      style={{ borderColor: "rgba(255,255,255,0.08)" }}
+                    >
+                      <option value={5}>Crush (Default)</option>
+                      <option value={0}>Claude Code</option>
+                      <option value={6}>ZeroClaw</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -449,7 +595,7 @@ export default function OraclePage() {
 
                         <button
                           onClick={handleConsultOracle}
-                          disabled={loading || !prompt || hasPendingJob}
+                          disabled={loading || !prompt || !hfToken || !hfRepoId || hasPendingJob || (selectedModel === "gpt-4o-mini" && !openaiApiKey)}
                           className="py-3 px-6 rounded-xl text-xs font-bold uppercase transition-all active:scale-98 disabled:opacity-40 flex items-center justify-center gap-2"
                           style={{
                             background: "linear-gradient(90deg, #D4A853, #b88f3b)",
@@ -464,6 +610,10 @@ export default function OraclePage() {
                             </>
                           ) : hasPendingJob ? (
                             "Pending Job In Progress..."
+                          ) : !hfToken || !hfRepoId ? (
+                            "Provide HF Credentials to Query"
+                          ) : selectedModel === "gpt-4o-mini" && !openaiApiKey ? (
+                            "Provide OpenAI API Key to Query"
                           ) : (
                             "Consult Oracle"
                           )}
@@ -504,9 +654,11 @@ export default function OraclePage() {
                           <div className="text-yellow-500/80 animate-pulse">
                             &gt; Accessing TEE enclave...
                             <br />
-                            &gt; Initiating sovereign harness...
+                            &gt; Querying TEEServiceRegistry for active node...
                             <br />
-                            &gt; Running agent tools on market state...
+                            &gt; Encrypting Hugging Face write token client-side...
+                            <br />
+                            &gt; Broadcasting Phase 1 transaction to Ritual Chain...
                             <br />
                             &gt; Verifying outputs...
                           </div>
